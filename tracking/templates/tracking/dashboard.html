@@ -1,0 +1,311 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SITME - Tracking de Muestras</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'tracking/images/logo-hospital.png' %}?v=2">
+    <style>
+        body {
+            /* Capa semi-transparente para el fondo */
+            background-image: linear-gradient(rgba(240, 244, 248, 0.5), rgba(240, 244, 248, 0.5)), url("{% static 'tracking/images/FONDO2.webp' %}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* --- EFECTO DE CARGA INICIAL (SPINNER) --- */
+        #sitme-loader {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: none; 
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Contenedor Superior (Cápsula del Logo) */
+        .glass-capsule {
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 75px; 
+            padding-left: 1rem !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        /* Contenedor Principal */
+        .glass-container {
+            background: rgba(255, 255, 255, 0.7); 
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        /* Cabecera Azul Institucional */
+        .institutional-header {
+            background: linear-gradient(135deg, rgba(13, 110, 253, 0.95) 0%, rgba(8, 66, 152, 0.95) 100%);
+            color: white;
+            border-top-left-radius: 11px;
+            border-top-right-radius: 11px;
+        }
+
+        /* Zona de la tabla */
+        .table-wrapper {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(5px);
+            border-radius: 8px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.02);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            margin: 0 1rem 1rem 1rem; 
+        }
+
+        .table-custom thead th {
+            background-color: rgba(248, 249, 250, 0.7);
+            color: #495057;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid rgba(222, 226, 230, 0.5);
+        }
+
+        .table-custom tbody tr {
+            transition: background-color 0.2s ease;
+        }
+
+        .table-custom tbody tr:hover {
+            background-color: rgba(241, 245, 249, 0.9);
+        }
+        
+        .badge-custom {
+            font-weight: 700;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        /* ====== NUEVOS ESTILOS DE BOTONES ====== */
+        
+        /* Botón de Descarga PDF: Llamativo, rojo corporativo Adobe, efecto 3D */
+        .btn-pdf {
+            background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+            color: white !important;
+            font-weight: 700;
+            font-size: 0.8rem;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            box-shadow: 0 4px 10px rgba(229, 57, 53, 0.35);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-pdf:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(229, 57, 53, 0.5);
+            background: linear-gradient(135deg, #ef5350 0%, #d32f2f 100%);
+        }
+
+        /* Botón de Acciones Lab: Limpio, discreto, profesional */
+        .btn-acciones {
+            background-color: #ffffff;
+            color: #495057;
+            border: 1px solid #ced4da;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            padding: 4px 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s;
+        }
+
+        .btn-acciones:hover {
+            background-color: #f8f9fa;
+            border-color: #adb5bd;
+            color: #212529;
+        }
+        /* ========================================= */
+    </style>
+</head>
+<body>
+
+<div id="sitme-loader">
+    <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+    <h5 class="fw-bold" style="color: #084298;">SITME HVRG</h5>
+    <p class="text-muted small">Cargando módulo de laboratorio...</p>
+</div>
+
+<div class="container mt-4 mb-5">
+    
+    <div class="row mb-4 align-items-center p-3 mx-0 glass-capsule">
+        <div class="col-auto">
+            <img src="{% static 'tracking/images/logo-hospital.png' %}" alt="Logo" style="height: 70px;">
+        </div>
+        <div class="col">
+            <h3 class="fw-bold mb-0" style="color: #084298;">SITME - Laboratorio Clínico</h3>
+            <p class="text-secondary mb-0 fw-semibold" style="font-size: 0.95rem;">Sistema Integrado de Trazabilidad de Muestras Epidemiológicas</p>
+        </div>
+    </div>
+
+    <div class="glass-container border-0 overflow-hidden">
+        
+        <div class="institutional-header d-flex justify-content-between align-items-center p-3 border-0">
+            <h5 class="mb-0 fw-bold">Tablero de Tracking en Tiempo Real</h5>
+            <div>
+                {% if user.is_authenticated %}
+                    <span class="me-3 opacity-75 fw-semibold"><small>👨‍⚕️ Dr. {{ user.username }}</small></span>
+                    <a href="{% url 'crear_orden' %}" class="btn btn-success btn-sm shadow-sm fw-bold border-0" style="background-color: #198754;">+ Nueva Solicitud</a>
+                    <form action="{% url 'logout' %}" method="post" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-light btn-sm ms-2 opacity-75 border-0">Salir</button>
+                    </form>
+                {% else %}
+                    <a href="{% url 'login' %}" class="btn btn-light text-primary btn-sm fw-bold shadow-sm">Iniciar Sesión para Solicitar</a>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex gap-2 align-items-center">
+                <span class="fw-bold text-secondary me-2" style="font-size: 0.85rem;"><small>FILTRAR:</small></span>
+                <a href="{% url 'dashboard' %}" class="btn btn-sm {% if not estado_actual or estado_actual == 'TODAS' %}btn-dark{% else %}btn-outline-dark{% endif %} fw-semibold">📋 Todas</a>
+                <a href="?estado=SOLICITADO" class="btn btn-sm {% if estado_actual == 'SOLICITADO' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-semibold">🔴 Pendientes</a>
+                <a href="?estado=TOMADO" class="btn btn-sm {% if estado_actual == 'TOMADO' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %} fw-semibold">🟡 Tomadas</a>
+                <a href="?estado=ENVIADO" class="btn btn-sm {% if estado_actual == 'ENVIADO' %}btn-info text-dark{% else %}btn-outline-info text-dark{% endif %} fw-semibold">🔵 Enviadas</a>
+                <a href="?estado=RESULTADO" class="btn btn-sm {% if estado_actual == 'RESULTADO' %}btn-success{% else %}btn-outline-success{% endif %} fw-semibold">🟢 Resultados</a>
+            </div>
+
+            <form method="GET" action="{% url 'dashboard' %}" class="d-flex" style="max-width: 320px; width: 100%;">
+                <input type="hidden" name="estado" value="{{ estado_actual|default_if_none:'' }}">
+                <input type="text" name="q" class="form-control form-control-sm me-2 border-secondary border-opacity-25" style="background: rgba(255,255,255,0.8);" placeholder="🔍 Buscar paciente o cama..." value="{{ request.GET.q|default_if_none:'' }}">
+                <button type="submit" class="btn btn-primary btn-sm fw-bold">Buscar</button>
+                {% if request.GET.q %}
+                    <a href="{% url 'dashboard' %}?estado={{ estado_actual|default_if_none:'' }}" class="btn btn-outline-secondary btn-sm ms-2 border-0" title="Limpiar búsqueda">✕</a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div class="table-wrapper p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-custom align-middle mb-0" style="background: transparent;">
+                    <thead>
+                        <tr>
+                            <th class="ps-4 py-3">Fecha y Hora</th>
+                            <th>Paciente</th>
+                            <th>Cama/Servicio</th>
+                            <th>Examen</th>
+                            <th>Estado</th>
+                            <th class="pe-4">Médico</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for orden in ordenes %}
+                        <tr>
+                            <td class="ps-4 text-secondary small">{{ orden.fecha_solicitud|date:"d M Y, H:i" }}</td>
+                            <td class="fw-bold" style="color: #212529; font-size: 1.05rem;">{{ orden.paciente_nombre }}</td>
+                            <td class="fw-semibold text-secondary">{{ orden.cama }}</td>
+                            <td class="fw-bold" style="color: #084298;">{{ orden.tipo_examen.nombre }}</td>
+                            <td>
+                                {% if orden.estado == 'SOLICITADO' %}
+                                    <span class="badge badge-custom bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1">{{ orden.get_estado_display }}</span>
+                                {% elif orden.estado == 'TOMADO' %}
+                                    <span class="badge badge-custom bg-warning bg-opacity-10 text-dark border border-warning border-opacity-50 px-2 py-1">{{ orden.get_estado_display }}</span>
+                                {% elif orden.estado == 'ENVIADO' %}
+                                    <span class="badge badge-custom bg-info bg-opacity-10 border border-info border-opacity-50 px-2 py-1" style="color: #084298 !important;">{{ orden.get_estado_display }}</span>
+                                {% else %}
+                                    <span class="badge badge-custom bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">{{ orden.get_estado_display }}</span>
+                                {% endif %}
+
+                                <div class="d-flex flex-column gap-2 mt-2">
+                                    {% if orden.archivo_resultado %}
+                                        <a href="{{ orden.archivo_resultado.url }}" target="_blank" class="btn btn-pdf w-100">
+                                            <span>📥</span> DESCARGAR PDF
+                                        </a>
+                                    {% endif %}
+
+                                    {% if user.is_staff %}
+                                    <div class="dropdown w-100">
+                                        <button class="btn btn-acciones w-100 dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                            ⚙️ Acciones Lab
+                                        </button>
+                                        <ul class="dropdown-menu shadow-lg border-0" style="border-radius: 10px;">
+                                        <li><a class="dropdown-item small fw-bold text-primary" href="{% url 'editar_orden' orden.id %}">✏️ Editar Datos del Paciente</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item small fw-bold text-danger" href="{% url 'cambiar_estado' orden.id 'SOLICITADO' %}">🔴 Marcar Solicitado</a></li>
+                                        <li><a class="dropdown-item small fw-bold text-warning" href="{% url 'cambiar_estado' orden.id 'TOMADO' %}">🟡 Marcar Tomada</a></li>
+                                        <li><a class="dropdown-item small fw-bold text-info" href="{% url 'cambiar_estado' orden.id 'ENVIADO' %}">🔵 Marcar LIMA/DIRESA</a></li>
+                                        <li><a class="dropdown-item small fw-bold text-success" href="{% url 'cambiar_estado' orden.id 'RESULTADO' %}">🟢 Marcar Resultado (Recibido)</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item small fw-bold text-success" href="{% url 'subir_resultado' orden.id %}">📎 Subir/Actualizar PDF</a></li>
+                                    </ul>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td class="pe-4 text-secondary small fw-semibold">{{ orden.medico_solicitante.username|default:"N/A" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <h4 class="mb-1 text-secondary fw-bold">No hay órdenes registradas</h4>
+                                <p class="text-muted mb-0">Las solicitudes nuevas aparecerán aquí.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="text-center mt-4">
+        <span style="font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #6c757d; background: rgba(255,255,255,0.6); padding: 5px 10px; border-radius: 5px; backdrop-filter: blur(5px);">
+            > Dev: Mblgo. Denis R. <span class="blinking-cursor">_</span>
+        </span>
+    </div>
+
+    <style>
+        .blinking-cursor {
+            font-weight: 900;
+            color: #0d6efd; /* Azul institucional */
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        if (!sessionStorage.getItem('sitme_cargado')) {
+            const loader = document.getElementById('sitme-loader');
+            loader.style.display = 'flex';
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 300);
+            }, 300); 
+            sessionStorage.setItem('sitme_cargado', 'true');
+        }
+    });
+</script>
+
+</body>
+</html>

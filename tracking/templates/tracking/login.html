@@ -1,0 +1,135 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión - SITME</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'tracking/images/logo-hospital.png' %}?v=2">
+    
+    <style>
+        body {
+            background-image: url("{% static 'tracking/images/FONDO1.webp' %}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            height: 100vh;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative; /* Necesario para anclar la firma al fondo */
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.15); 
+            backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            box-shadow: 0 25px 45px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            width: 100%;
+            max-width: 420px; 
+            padding: 2rem;
+            z-index: 10; /* Asegura que el login esté por encima de todo */
+        }
+
+        .text-institutional-blue {
+            color: #084298; 
+            font-weight: 800;
+            letter-spacing: 1px;
+        }
+
+        .glass-input {
+            background-color: rgba(255, 255, 255, 0.5) !important;
+            border: 1px solid rgba(255, 255, 255, 0.6) !important;
+            color: #333 !important;
+            border-radius: 12px;
+            backdrop-filter: blur(5px);
+        }
+        
+        .glass-input:focus {
+            background-color: rgba(255, 255, 255, 0.8) !important;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+        }
+
+        .btn-institutional {
+            background-color: #0d6efd;
+            background-image: linear-gradient(135deg, #0d6efd 0%, #084298 100%);
+            border: none;
+            color: white;
+            font-weight: bold;
+            padding: 12px;
+            border-radius: 12px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-institutional:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(13, 110, 253, 0.4);
+            color: white;
+        }
+
+        /* ESTILOS DE TU FIRMA */
+        .firma-hacker {
+            position: absolute;
+            bottom: 25px; /* Lo ancla al fondo de la pantalla */
+            width: 100%;
+            text-align: center;
+            z-index: 5;
+        }
+
+        .blinking-cursor {
+            font-weight: 900;
+            color: #0d6efd;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container d-flex justify-content-center">
+    <div class="glass-card">
+        
+        <div class="text-center mb-4">
+            <img src="{% static 'tracking/images/logo-hospital.png' %}" alt="Logo" style="height: 85px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.1));">
+            <h4 class="mb-0 text-institutional-blue mt-3">SITME</h4>
+            <p class="text-dark small fw-bold mb-0" style="opacity: 0.8;">Hospital Víctor Ramos Guardia</p>
+        </div>
+        
+        <form method="POST">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-bold" style="color: #1a202c;">Usuario Médico</label>
+                <input type="text" name="username" class="form-control form-control-lg glass-input" required autofocus>
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-bold" style="color: #1a202c;">Contraseña</label>
+                <input type="password" name="password" class="form-control form-control-lg glass-input" required>
+            </div>
+            <button type="submit" class="btn btn-institutional btn-lg w-100">Ingresar al Sistema</button>
+        </form>
+        
+        <div class="text-center mt-4">
+            <a href="{% url 'dashboard' %}" class="text-decoration-none" style="color: #2c3e50; font-weight: 600;"><small>← Volver al Tablero Público</small></a>
+        </div>
+    </div>
+</div>
+
+<div class="firma-hacker">
+    <span style="font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #495057; background: rgba(255,255,255,0.7); padding: 5px 12px; border-radius: 6px; backdrop-filter: blur(5px); box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        > Dev: Mblgo. Denis R. <span class="blinking-cursor">_</span>
+    </span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

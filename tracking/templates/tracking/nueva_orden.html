@@ -1,0 +1,144 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nueva Solicitud - SITME</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" href="{% static 'tracking/images/logo-hospital.png' %}?v=2">
+    
+    <style>
+        body {
+            /* Mismo fondo suave del dashboard */
+            background-image: linear-gradient(rgba(240, 244, 248, 0.5), rgba(240, 244, 248, 0.5)), url("{% static 'tracking/images/FONDO2.webp' %}");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            /* Centramos todo en la pantalla */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        /* Contenedor de Vidrio */
+        .glass-container {
+            background: rgba(255, 255, 255, 0.85); 
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            overflow: hidden;
+        }
+
+        /* Cabecera Azul Institucional (Adiós al verde) */
+        .institutional-header {
+            background: linear-gradient(135deg, rgba(13, 110, 253, 0.95) 0%, rgba(8, 66, 152, 0.95) 100%);
+            color: white;
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Títulos de los campos (Azul para guiarlos) */
+        .form-label {
+            color: #084298;
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Botón de Guardar */
+        .btn-institutional {
+            background: linear-gradient(135deg, #0d6efd 0%, #084298 100%);
+            color: white;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .btn-institutional:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(13, 110, 253, 0.4);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-9 col-lg-8">
+            
+            <div class="glass-container">
+                <div class="institutional-header">
+                    <img src="{% static 'tracking/images/logo-hospital.png' %}" alt="Logo" style="height: 45px; filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.2));">
+                    <h4 class="mb-0 fw-bold">Generar Nueva Solicitud Médica</h4>
+                </div>
+                
+                <div class="card-body p-4 p-md-5" style="background: rgba(255,255,255,0.6);">
+                    <form method="POST">
+                        {% csrf_token %} 
+                        
+                        <div class="mb-4">
+                            <label class="form-label">👤 Nombre Completo del Paciente</label>
+                            {{ form.paciente_nombre }}
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">🛏️ Servicio / Cama</label>
+                                {{ form.cama }}
+                            </div>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">🔬 Examen a Solicitar</label>
+                                {{ form.tipo_examen }}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">📝 Notas / Justificación Médica (Opcional)</label>
+                            {{ form.notas }}
+                        </div>
+
+                        <hr class="my-4" style="border-color: rgba(0,0,0,0.1);">
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary fw-semibold px-4" style="border-radius: 8px;">← Cancelar y Volver</a>
+                            <button type="submit" class="btn btn-institutional px-4 py-2">Registrar Orden en SITME</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div class="text-center mt-4">
+        <span style="font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; color: #6c757d; background: rgba(255,255,255,0.6); padding: 5px 10px; border-radius: 5px; backdrop-filter: blur(5px);">
+            > Dev: Mblgo. Denis R. <span class="blinking-cursor">_</span>
+        </span>
+    </div>
+
+    <style>
+        .blinking-cursor {
+            font-weight: 900;
+            color: #0d6efd; /* Azul institucional */
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
