@@ -306,6 +306,48 @@
         }
     });
 </script>
+<audio id="alerta-sonora" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // 1. Recargar el Tablero cada 60 segundos (60000 milisegundos)
+        // Solo lo recarga si el usuario no está escribiendo en el buscador
+        let buscador = document.querySelector('input[name="q"]');
+        if (!buscador || buscador.value === "") {
+            setTimeout(function() {
+                window.location.reload();
+            }, 60000); 
+        }
+
+        // 2. Contar cuántas órdenes nuevas (Rojas) hay en pantalla
+        let pendientesNuevos = 0;
+        document.querySelectorAll('span.badge-custom.bg-danger').forEach(function(badge) {
+            pendientesNuevos++;
+        });
+
+        // 3. Comparar con el registro anterior en la memoria del navegador
+        let pendientesAnteriores = sessionStorage.getItem('sitme_pendientes_count');
+
+        if (pendientesAnteriores !== null) {
+            if (pendientesNuevos > parseInt(pendientesAnteriores)) {
+                // ¡HAY UN PEDIDO NUEVO! Sonar la alarma
+                let audio = document.getElementById('alerta-sonora');
+                
+                // Intentar reproducir el sonido
+                let playPromise = audio.play();
+                if (playPromise !== undefined) {
+                    playPromise.catch(error => {
+                        console.log("El navegador requiere que hagas un clic en la página primero para permitir el sonido.");
+                    });
+                }
+            }
+        }
+
+        // 4. Guardar el nuevo conteo en la memoria para la próxima recarga
+        sessionStorage.setItem('sitme_pendientes_count', pendientesNuevos);
+    });
+</script>
 
 </body>
 </html>
