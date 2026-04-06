@@ -94,7 +94,7 @@
                 {% if user.is_authenticated %}
                     <span class="badge badge-rol me-2 px-2 py-1 shadow-sm">{{ user.first_name }}</span>
                     {% if user.username != 'epidemiologia' %}
-                        <a href="{% url 'crear_orden' %}" class="btn btn-success btn-sm shadow-sm fw-bold border-0" style="background-color: #198754;">+ Nueva Solicitud</a>
+                        <a href="{% url 'crear_orden' %}" class="btn bg-white btn-sm fw-bold border-0 px-3" style="color: #084298 !important; box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.2) !important';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.15) !important';">+ Nueva Solicitud</a>
                     {% endif %}
                     <form action="{% url 'logout' %}" method="post" class="d-inline">
                         {% csrf_token %}
