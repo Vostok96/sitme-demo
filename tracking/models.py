@@ -20,6 +20,7 @@ class OrdenExamen(models.Model):
         ('TOMADO', '🟡 Muestra Tomada'),
         ('ENVIADO', '🔵 Enviado a LIMA/DIRESA'),
         ('RESULTADO', '🟢 Resultado Recibido'),
+        
     ]
 
     paciente_nombre = models.CharField(max_length=200, verbose_name="Nombre del Paciente")
@@ -38,6 +39,11 @@ class OrdenExamen(models.Model):
     medico_solicitante = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, verbose_name="Médico Solicitante")
     fecha_solicitud = models.DateTimeField(auto_now_add=True, verbose_name="Fecha y Hora de Solicitud")
     notas = models.TextField(blank=True, null=True, verbose_name="Observaciones / Justificación")
+
+    # NUEVOS CAMPOS DE AUDITORÍA
+    laboratorista_toma = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tomas_realizadas')
+    laboratorista_envio = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='envios_realizados')
+    laboratorista_resultado = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='resultados_subidos')
 
     def __str__(self):
         return f"{self.paciente_nombre} - {self.tipo_examen.nombre} - {self.estado}"
