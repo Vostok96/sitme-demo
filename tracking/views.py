@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Q  
 from .models import OrdenExamen
 from .forms import OrdenExamenForm, SubirResultadoForm
+from django.db.models import Count
+import datetime
 
 def dashboard(request):
     # Capturamos lo que el usuario busque
@@ -98,3 +100,33 @@ def editar_orden(request, orden_id):
         form = OrdenExamenForm(instance=orden)
         
     return render(request, 'tracking/editar_orden.html', {'form': form, 'orden': orden})
+
+@login_required(login_url='login')
+def estadisticas(request):
+    # Solo el personal del laboratorio y Epidemiología pueden ver reportes
+    if not request.user.is_staff and request.user.username != 'epidemiologia':
+        return redirect('dashboard')
+        
+    # Por defecto: carga desde el primer día del mes actual hasta hoy
+    hoy = datetime.date.today()
+    inicio_mes = hoy.replace(day=1)
+    
+    fecha_inicio = request.GET.get('inicio', inicio_mes.strftime('%Y-%m-%d'))
+    fecha_fin = request.GET.get('fin', hoy.strftime('%Y-%m-%d'))
+    
+    # Filtramos las órdenes en ese rango de fechas
+    ordenes = OrdenExamen.objects.filter(
+        fecha_solicitud__date__gte=fecha_inicio,
+        fecha_solicitud__date__lte=fecha_fin
+    )
+    
+    # MAGIA: Agrupamos por el nombre del examen y contamos cuántos hay de cada uno
+    conteo_examenes = ordenes.values('tipo_examen__nombre').annotate(total=Count('id')).order_by('-total')
+    total_general = ordenes.count()
+    
+    return render(request, 'tracking/estadisticas.html', {
+        'conteo_examenes': conteo_examenes,
+        'total_general': total_general,
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin
+    })

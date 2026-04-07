@@ -1,0 +1,79 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SITME - Estadísticas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-image: linear-gradient(rgba(240, 244, 248, 0.6), rgba(240, 244, 248, 0.6)), url("{% static 'tracking/images/FONDO2.webp' %}"); background-size: cover; background-attachment: fixed; font-family: 'Segoe UI', sans-serif; }
+        .glass-container { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); padding: 2rem; margin-top: 2rem; }
+        .header-stats { background: linear-gradient(135deg, #0d6efd 0%, #084298 100%); color: white; padding: 1.5rem; border-radius: 10px; margin-bottom: 2rem; }
+        .table-custom th { background-color: #f8f9fa; color: #495057; }
+        .total-box { background: rgba(13, 110, 253, 0.1); border-left: 5px solid #0d6efd; padding: 15px; border-radius: 8px; }
+    </style>
+</head>
+<body>
+<div class="container pb-5">
+    
+    <div class="glass-container">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="fw-bold text-primary mb-0">📊 Reportes Epidemiológicos y Productividad</h3>
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary fw-bold">← Volver al Tablero</a>
+        </div>
+
+        <div class="header-stats shadow-sm">
+            <form method="GET" class="row align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Fecha de Inicio:</label>
+                    <input type="date" name="inicio" class="form-control fw-semibold" value="{{ fecha_inicio }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Fecha de Fin:</label>
+                    <input type="date" name="fin" class="form-control fw-semibold" value="{{ fecha_fin }}">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-light text-primary fw-bold w-100">Generar Reporte</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="row">
+            <div class="col-md-8">
+                <table class="table table-hover table-custom border shadow-sm rounded overflow-hidden">
+                    <thead>
+                        <tr>
+                            <th>TIPO DE EXAMEN / ENFERMEDAD</th>
+                            <th class="text-center">CANTIDAD PROCESADA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in conteo_examenes %}
+                        <tr>
+                            <td class="fw-bold" style="color: #212529;">{{ item.tipo_examen__nombre }}</td>
+                            <td class="text-center fw-bold fs-5 text-primary">{{ item.total }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="2" class="text-center py-4 text-muted">No hay registros en estas fechas.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="total-box shadow-sm">
+                    <h5 class="text-primary fw-bold mb-1">TOTAL GENERAL</h5>
+                    <p class="text-muted small mb-2">Exámenes en el rango seleccionado</p>
+                    <h1 class="display-4 fw-bold text-dark">{{ total_general }}</h1>
+                </div>
+                <div class="mt-4 p-3 bg-light rounded border text-muted small text-center">
+                    Documento estadístico generado automáticamente por SITME.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
