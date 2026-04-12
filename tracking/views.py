@@ -5,7 +5,10 @@ from .models import OrdenExamen
 from .forms import OrdenExamenForm, SubirResultadoForm
 from django.db.models import Count
 import datetime
+from django.contrib.auth.decorators import login_required
 
+# ¡AQUÍ ESTÁ EL CAMBIO! Agregamos el candado al dashboard
+@login_required(login_url='login')
 def dashboard(request):
     # Capturamos lo que el usuario busque
     query = request.GET.get('q')
