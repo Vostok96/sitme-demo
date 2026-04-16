@@ -10,8 +10,8 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +21,31 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-kbg5bco9f_a$+p^c_@m!ak)aj0=*qrrs(rzaoyi^72+naxzwyj'
+SECRET_KEY = os.getenv(
+    'DJANGO_SECRET_KEY',
+    'change-this-secret-key-before-production-2026-sitme-local-dev',
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DJANGO_DEBUG', 'True').lower() in {'1', 'true', 'yes', 'on'}
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv(
+        'DJANGO_ALLOWED_HOSTS',
+        'localhost,127.0.0.1,sitme.microbiolog-ia.com',
+    ).split(',')
+    if host.strip()
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        'DJANGO_CSRF_TRUSTED_ORIGINS',
+        'https://sitme.microbiolog-ia.com',
+    ).split(',')
+    if origin.strip()
+]
 
 
 # Application definition
@@ -105,9 +124,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es-pe'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = os.getenv('DJANGO_TIME_ZONE', 'America/Lima')
 
 USE_I18N = True
 
@@ -121,12 +140,18 @@ STATIC_URL = 'static/'
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# --- AGREGA ESTO ---
-import os
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'tracking', 'static'),
 ]
-# -------------------
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
 
 # Rutas de redirección para el Login y Logout
 LOGIN_REDIRECT_URL = 'dashboard'
@@ -140,3 +165,18 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
+
+ENABLE_HTTPS_SECURITY = os.getenv('DJANGO_ENABLE_HTTPS_SECURITY', 'False').lower() in {
+    '1',
+    'true',
+    'yes',
+    'on',
+}
+
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = ENABLE_HTTPS_SECURITY
+SESSION_COOKIE_SECURE = ENABLE_HTTPS_SECURITY
+CSRF_COOKIE_SECURE = ENABLE_HTTPS_SECURITY
+SECURE_HSTS_SECONDS = 31536000 if ENABLE_HTTPS_SECURITY else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = ENABLE_HTTPS_SECURITY
+SECURE_HSTS_PRELOAD = ENABLE_HTTPS_SECURITY

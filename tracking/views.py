@@ -1,135 +1,262 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q  
-from .models import OrdenExamen
-from .forms import OrdenExamenForm, SubirResultadoForm
-from django.db.models import Count
-import datetime
-from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Prefetch, Q
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
 
-# ¡AQUÍ ESTÁ EL CAMBIO! Agregamos el candado al dashboard
+from .forms import OrdenExamenForm, SubirResultadoForm
+from .models import EventoOrden, OrdenExamen
+from .permissions import (
+    obtener_contexto_roles,
+    puede_crear_ordenes,
+    puede_gestionar_ordenes,
+    puede_ver_reportes,
+)
+
+
+ESTADOS_VALIDOS = {estado for estado, _ in OrdenExamen.ESTADO_CHOICES}
+
+
+def registrar_evento(
+    orden,
+    tipo_evento,
+    descripcion,
+    usuario=None,
+    estado_anterior=None,
+    estado_nuevo=None,
+):
+    return EventoOrden.objects.create(
+        orden=orden,
+        tipo_evento=tipo_evento,
+        descripcion=descripcion,
+        usuario=usuario,
+        estado_anterior=estado_anterior,
+        estado_nuevo=estado_nuevo,
+    )
+
+
+def registrar_cambio_estado(orden, nuevo_estado, usuario):
+    estado_anterior = orden.estado
+    ahora = timezone.now()
+    orden.estado = nuevo_estado
+
+    if nuevo_estado == 'TOMADO':
+        orden.laboratorista_toma = usuario
+        orden.fecha_toma = ahora
+    elif nuevo_estado == 'ENVIADO':
+        orden.laboratorista_envio = usuario
+        orden.fecha_envio = ahora
+    elif nuevo_estado == 'RESULTADO':
+        orden.laboratorista_resultado = usuario
+        orden.fecha_resultado = ahora
+
+    return estado_anterior
+
+
+def construir_contexto_base(user):
+    return obtener_contexto_roles(user)
+
+
 @login_required(login_url='login')
 def dashboard(request):
-    # Capturamos lo que el usuario busque
     query = request.GET.get('q')
     estado_filtro = request.GET.get('estado')
-    
-    # Empezamos trayendo todas las órdenes
-    ordenes = OrdenExamen.objects.all()
-    
-    # 1. Si hicieron clic en un botón de estado, filtramos primero eso
+
+    eventos_queryset = EventoOrden.objects.select_related('usuario')
+    ordenes = OrdenExamen.objects.select_related(
+        'tipo_examen',
+        'medico_solicitante',
+        'laboratorista_toma',
+        'laboratorista_envio',
+        'laboratorista_resultado',
+    ).prefetch_related(
+        Prefetch('eventos', queryset=eventos_queryset)
+    )
+
     if estado_filtro and estado_filtro != 'TODAS':
         ordenes = ordenes.filter(estado=estado_filtro)
-        
-    # 2. Si buscaron texto, usamos Q para buscar en nombre o cama (ignora mayúsculas)
+
     if query:
         ordenes = ordenes.filter(
-            Q(paciente_nombre__icontains=query) | Q(cama__icontains=query)
+            Q(paciente_nombre__icontains=query)
+            | Q(cama__icontains=query)
+            | Q(tipo_examen__nombre__icontains=query)
+            | Q(medico_solicitante__username__icontains=query)
         )
-        
-    return render(request, 'tracking/dashboard.html', {
-        'ordenes': ordenes,
-        'estado_actual': estado_filtro 
-    })
 
-@login_required(login_url='login') 
+    context = {
+        'ordenes': ordenes,
+        'estado_actual': estado_filtro,
+    }
+    context.update(construir_contexto_base(request.user))
+    return render(request, 'tracking/dashboard.html', context)
+
+
+@login_required(login_url='login')
 def crear_orden(request):
+    if not puede_crear_ordenes(request.user):
+        messages.error(request, 'Tu usuario no tiene permisos para registrar solicitudes.')
+        return redirect('dashboard')
+
     if request.method == 'POST':
         form = OrdenExamenForm(request.POST)
         if form.is_valid():
             orden = form.save(commit=False)
-            if request.user.is_authenticated:
-                orden.medico_solicitante = request.user
+            orden.medico_solicitante = request.user
             orden.save()
+            registrar_evento(
+                orden,
+                'CREACION',
+                'Solicitud registrada en SITME.',
+                usuario=request.user,
+                estado_nuevo=orden.estado,
+            )
+            messages.success(request, 'La solicitud fue registrada correctamente.')
             return redirect('dashboard')
     else:
         form = OrdenExamenForm()
-    
-    return render(request, 'tracking/nueva_orden.html', {'form': form})
+
+    context = {'form': form}
+    context.update(construir_contexto_base(request.user))
+    return render(request, 'tracking/nueva_orden.html', context)
+
 
 @login_required(login_url='login')
-def cambiar_estado(request, orden_id, nuevo_estado):
-    if not request.user.is_staff:
+@require_POST
+def cambiar_estado(request, orden_id):
+    if not puede_gestionar_ordenes(request.user):
+        messages.error(request, 'Tu usuario no tiene permisos para cambiar estados.')
         return redirect('dashboard')
-    
+
+    nuevo_estado = request.POST.get('nuevo_estado')
+    if nuevo_estado not in ESTADOS_VALIDOS:
+        messages.error(request, 'El estado solicitado no es valido.')
+        return redirect('dashboard')
+
     orden = get_object_or_404(OrdenExamen, id=orden_id)
-    orden.estado = nuevo_estado
-    
-    # --- LÓGICA DE AUDITORÍA: GUARDAR QUIÉN HIZO QUÉ ---
-    if nuevo_estado == 'TOMADO':
-        orden.laboratorista_toma = request.user
-    elif nuevo_estado == 'ENVIADO':
-        orden.laboratorista_envio = request.user
-    elif nuevo_estado == 'RESULTADO':
-        orden.laboratorista_resultado = request.user
-        
+    estado_anterior = registrar_cambio_estado(orden, nuevo_estado, request.user)
     orden.save()
+    registrar_evento(
+        orden,
+        'CAMBIO_ESTADO',
+        f'Estado actualizado de {estado_anterior} a {nuevo_estado}.',
+        usuario=request.user,
+        estado_anterior=estado_anterior,
+        estado_nuevo=nuevo_estado,
+    )
+    messages.success(request, 'El estado de la muestra fue actualizado.')
     return redirect('dashboard')
+
 
 @login_required(login_url='login')
 def subir_resultado(request, orden_id):
-    if not request.user.is_staff:
-        return redirect('dashboard') 
-        
+    if not puede_gestionar_ordenes(request.user):
+        messages.error(request, 'Tu usuario no tiene permisos para cargar resultados.')
+        return redirect('dashboard')
+
     orden = get_object_or_404(OrdenExamen, id=orden_id)
-    
+
     if request.method == 'POST':
+        ya_tenia_pdf = bool(orden.archivo_resultado)
         form = SubirResultadoForm(request.POST, request.FILES, instance=orden)
         if form.is_valid():
             orden_actualizada = form.save(commit=False)
-            orden_actualizada.estado = 'RESULTADO' 
-            # --- AQUÍ FALTABA EL REGISTRO DE AUDITORÍA ---
-            orden_actualizada.laboratorista_resultado = request.user
+            estado_anterior = registrar_cambio_estado(orden_actualizada, 'RESULTADO', request.user)
             orden_actualizada.save()
+            registrar_evento(
+                orden_actualizada,
+                'PDF',
+                'Resultado PDF actualizado.' if ya_tenia_pdf else 'Resultado PDF cargado.',
+                usuario=request.user,
+                estado_anterior=estado_anterior,
+                estado_nuevo='RESULTADO',
+            )
+            if estado_anterior != 'RESULTADO':
+                registrar_evento(
+                    orden_actualizada,
+                    'CAMBIO_ESTADO',
+                    f'Estado actualizado de {estado_anterior} a RESULTADO.',
+                    usuario=request.user,
+                    estado_anterior=estado_anterior,
+                    estado_nuevo='RESULTADO',
+                )
+            messages.success(request, 'El resultado PDF fue cargado correctamente.')
             return redirect('dashboard')
     else:
         form = SubirResultadoForm(instance=orden)
-        
-    return render(request, 'tracking/subir_resultado.html', {'form': form, 'orden': orden})
+
+    context = {'form': form, 'orden': orden}
+    context.update(construir_contexto_base(request.user))
+    return render(request, 'tracking/subir_resultado.html', context)
+
 
 @login_required(login_url='login')
 def editar_orden(request, orden_id):
-    if not request.user.is_staff:
+    if not puede_gestionar_ordenes(request.user):
+        messages.error(request, 'Tu usuario no tiene permisos para editar solicitudes.')
         return redirect('dashboard')
-        
+
     orden = get_object_or_404(OrdenExamen, id=orden_id)
-    
+
     if request.method == 'POST':
         form = OrdenExamenForm(request.POST, instance=orden)
         if form.is_valid():
+            cambios = []
+            for campo in ('paciente_nombre', 'cama', 'tipo_examen', 'notas'):
+                valor_anterior = getattr(orden, campo)
+                valor_nuevo = form.cleaned_data[campo]
+                if valor_anterior != valor_nuevo:
+                    cambios.append(campo)
+
             form.save()
+            descripcion = 'Solicitud editada.'
+            if cambios:
+                descripcion = 'Solicitud editada: ' + ', '.join(cambios) + '.'
+            registrar_evento(
+                orden,
+                'EDICION',
+                descripcion,
+                usuario=request.user,
+                estado_nuevo=orden.estado,
+            )
+            messages.success(request, 'La solicitud fue actualizada.')
             return redirect('dashboard')
     else:
         form = OrdenExamenForm(instance=orden)
-        
-    return render(request, 'tracking/editar_orden.html', {'form': form, 'orden': orden})
+
+    context = {'form': form, 'orden': orden}
+    context.update(construir_contexto_base(request.user))
+    return render(request, 'tracking/editar_orden.html', context)
+
 
 @login_required(login_url='login')
 def estadisticas(request):
-    # Solo el personal del laboratorio y Epidemiología pueden ver reportes
-    if not request.user.is_staff and request.user.username != 'epidemiologia':
+    if not puede_ver_reportes(request.user):
+        messages.error(request, 'Tu usuario no tiene permisos para ver reportes.')
         return redirect('dashboard')
-        
-    # Por defecto: carga desde el primer día del mes actual hasta hoy
-    hoy = datetime.date.today()
+
+    hoy = timezone.localdate()
     inicio_mes = hoy.replace(day=1)
-    
+
     fecha_inicio = request.GET.get('inicio', inicio_mes.strftime('%Y-%m-%d'))
     fecha_fin = request.GET.get('fin', hoy.strftime('%Y-%m-%d'))
-    
-    # Filtramos las órdenes en ese rango de fechas
-    ordenes = OrdenExamen.objects.filter(
+
+    ordenes = OrdenExamen.objects.select_related('tipo_examen').filter(
         fecha_solicitud__date__gte=fecha_inicio,
-        fecha_solicitud__date__lte=fecha_fin
+        fecha_solicitud__date__lte=fecha_fin,
     )
-    
-    # MAGIA: Agrupamos por el nombre del examen y contamos cuántos hay de cada uno
-    conteo_examenes = ordenes.values('tipo_examen__nombre').annotate(total=Count('id')).order_by('-total')
+
+    conteo_examenes = ordenes.values('tipo_examen__nombre').annotate(
+        total=Count('id')
+    ).order_by('-total')
     total_general = ordenes.count()
-    
-    return render(request, 'tracking/estadisticas.html', {
+
+    context = {
         'conteo_examenes': conteo_examenes,
         'total_general': total_general,
         'fecha_inicio': fecha_inicio,
-        'fecha_fin': fecha_fin
-    })
+        'fecha_fin': fecha_fin,
+    }
+    context.update(construir_contexto_base(request.user))
+    return render(request, 'tracking/estadisticas.html', context)

@@ -11,7 +11,8 @@
     <style>
         body {
             /* Mismo fondo suave del dashboard */
-            background-image: linear-gradient(rgba(240, 244, 248, 0.5), rgba(240, 244, 248, 0.5)), url("{% static 'tracking/images/FONDO2.webp' %}");
+            background-color: #edf3f8;
+            background-image: linear-gradient(rgba(240, 244, 248, 0.5), rgba(240, 244, 248, 0.5)), url("{% static 'tracking/images/bg-app.webp' %}");
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
@@ -21,6 +22,13 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
+        }
+
+        @media (max-width: 991.98px) {
+            body {
+                background-image: linear-gradient(rgba(240, 244, 248, 0.8), rgba(240, 244, 248, 0.8)), url("{% static 'tracking/images/bg-app-mobile.webp' %}");
+                background-attachment: scroll;
+            }
         }
 
         /* Contenedor de Vidrio */
@@ -86,6 +94,11 @@
                 <div class="card-body p-4 p-md-5" style="background: rgba(255,255,255,0.6);">
                     <form method="POST">
                         {% csrf_token %} 
+                        {% if form.errors %}
+                        <div class="alert alert-danger border-0 shadow-sm">
+                            Revise los campos del formulario antes de continuar.
+                        </div>
+                        {% endif %}
                         
                         <div class="mb-4">
                             <label class="form-label">👤 Nombre Completo del Paciente</label>

@@ -8,52 +8,242 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="icon" type="image/png" href="{% static 'tracking/images/logo-hospital.png' %}?v=2">
     <style>
-        /* ========================================= */
-        /* COLOR BASE E IDENTIDAD (Depende del Rol)  */
-        /* ========================================= */
-        {% if user.is_staff %}
-            /* LABORATORIO: Azul Institucional HVRG */
-            body { background-image: linear-gradient(rgba(240, 244, 248, 0.6), rgba(240, 244, 248, 0.6)), url("{% static 'tracking/images/FONDO2.webp' %}"); }
+        {% if es_laboratorio %}
+            body {
+                background-image: linear-gradient(rgba(240, 244, 248, 0.68), rgba(240, 244, 248, 0.68)), url("{% static 'tracking/images/bg-app.webp' %}");
+            }
             .institutional-header { background: linear-gradient(135deg, rgba(13, 110, 253, 0.95) 0%, rgba(8, 66, 152, 0.95) 100%); }
             .badge-rol { background-color: #0d6efd; color: white; }
-        {% elif user.username == 'epidemiologia' %}
-            /* EPIDEMIOLOGÍA: Púrpura Elegante */
-            body { background-image: linear-gradient(rgba(245, 240, 250, 0.7), rgba(245, 240, 250, 0.7)), url("{% static 'tracking/images/FONDO2.webp' %}"); }
+        {% elif es_epidemiologia %}
+            body {
+                background-image: linear-gradient(rgba(245, 240, 250, 0.76), rgba(245, 240, 250, 0.76)), url("{% static 'tracking/images/bg-app.webp' %}");
+            }
             .institutional-header { background: linear-gradient(135deg, rgba(111, 66, 193, 0.95) 0%, rgba(82, 13, 194, 0.95) 100%); }
             .badge-rol { background-color: #6f42c1; color: white; }
         {% else %}
-            /* MÉDICOS / SERVICIOS: Verde Quirúrgico (Teal) */
-            body { background-image: linear-gradient(rgba(235, 247, 244, 0.7), rgba(235, 247, 244, 0.7)), url("{% static 'tracking/images/FONDO2.webp' %}"); }
+            body {
+                background-image: linear-gradient(rgba(235, 247, 244, 0.76), rgba(235, 247, 244, 0.76)), url("{% static 'tracking/images/bg-app.webp' %}");
+            }
             .institutional-header { background: linear-gradient(135deg, rgba(32, 201, 151, 0.95) 0%, rgba(15, 81, 50, 0.95) 100%); }
             .badge-rol { background-color: #20c997; color: white; }
         {% endif %}
 
-        body { background-size: cover; background-position: center; background-attachment: fixed; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; position: relative; }
+        body {
+            background-color: #edf3f8;
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            position: relative;
+        }
 
-        #sitme-loader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; transition: opacity 0.3s ease; }
-        .glass-capsule { background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-radius: 75px; padding-left: 1rem !important; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); border: 1px solid rgba(255, 255, 255, 0.6); }
-        .glass-container { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); border: 1px solid rgba(255, 255, 255, 0.8); }
-        .institutional-header { color: white; border-top-left-radius: 11px; border-top-right-radius: 11px; }
-        
-        .table-wrapper { background: rgba(255, 255, 255, 0.88); backdrop-filter: blur(5px); border-radius: 8px; box-shadow: inset 0 0 5px rgba(0,0,0,0.02); border: 1px solid rgba(255, 255, 255, 0.5); margin: 0 1rem 1rem 1rem; }
-        .table-custom thead th { background-color: rgba(248, 249, 250, 0.7); color: #495057; font-weight: 700; text-transform: uppercase; font-size: 0.85rem; border-bottom: 2px solid rgba(222, 226, 230, 0.5); }
+        #sitme-loader {
+            position: fixed;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.3s ease;
+        }
+
+        .glass-capsule {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 75px;
+            padding-left: 1rem !important;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+        }
+
+        .glass-container {
+            background: rgba(255, 255, 255, 0.74);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .institutional-header {
+            color: white;
+            border-top-left-radius: 11px;
+            border-top-right-radius: 11px;
+        }
+
+        .table-wrapper {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(5px);
+            border-radius: 8px;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.02);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            margin: 0 1rem 1rem 1rem;
+        }
+
+        .table-custom thead th {
+            background-color: rgba(248, 249, 250, 0.7);
+            color: #495057;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            border-bottom: 2px solid rgba(222, 226, 230, 0.5);
+        }
+
         .table-custom tbody tr { transition: background-color 0.2s ease; }
         .table-custom tbody tr:hover { background-color: rgba(241, 245, 249, 0.9); }
         .badge-custom { font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-        .btn-pdf { background: linear-gradient(135deg, #e53935 0%, #c62828 100%); color: white !important; font-weight: 700; font-size: 0.8rem; border: none; border-radius: 6px; padding: 6px 12px; box-shadow: 0 4px 10px rgba(229, 57, 53, 0.35); transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 6px; letter-spacing: 0.5px; }
-        .btn-pdf:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(229, 57, 53, 0.5); background: linear-gradient(135deg, #ef5350 0%, #d32f2f 100%); }
-        .btn-acciones { background-color: #ffffff; color: #495057; border: 1px solid #ced4da; font-weight: 600; font-size: 0.75rem; border-radius: 6px; padding: 4px 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); transition: all 0.2s; }
-        .btn-acciones:hover { background-color: #f8f9fa; border-color: #adb5bd; color: #212529; }
+        .btn-pdf {
+            background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+            color: white !important;
+            font-weight: 700;
+            font-size: 0.8rem;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 12px;
+            box-shadow: 0 4px 10px rgba(229, 57, 53, 0.35);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-pdf:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(229, 57, 53, 0.5);
+            background: linear-gradient(135deg, #ef5350 0%, #d32f2f 100%);
+        }
+
+        .btn-acciones {
+            background-color: #ffffff;
+            color: #495057;
+            border: 1px solid #ced4da;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border-radius: 6px;
+            padding: 4px 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s;
+        }
+
+        .btn-acciones:hover {
+            background-color: #f8f9fa;
+            border-color: #adb5bd;
+            color: #212529;
+        }
+
+        .timeline-meta {
+            font-size: 0.7rem;
+            color: #6c757d;
+            font-weight: 600;
+            line-height: 1.45;
+        }
+
+        .event-timeline {
+            margin-top: 0.75rem;
+            padding: 0.85rem 1rem;
+            background: rgba(248, 249, 250, 0.85);
+            border: 1px solid rgba(13, 110, 253, 0.08);
+            border-radius: 10px;
+        }
+
+        .event-item + .event-item {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed rgba(108, 117, 125, 0.25);
+        }
+
+        .event-date {
+            font-size: 0.72rem;
+            color: #6c757d;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .event-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .event-detail {
+            font-size: 0.8rem;
+            color: #4b5563;
+        }
+
+        .dropdown-menu form { margin: 0; }
 
         .firma-hacker { position: absolute; bottom: -40px; width: 100%; text-align: center; z-index: 5; }
         .blinking-cursor { font-weight: 900; color: #0d6efd; animation: blink 1s step-end infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-        .glass-hud-alert { position: fixed; bottom: 30px; right: 30px; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(220, 53, 69, 0.4); border-left: 6px solid #dc3545; box-shadow: 0 15px 35px rgba(220, 53, 69, 0.25); border-radius: 12px; padding: 12px 20px; display: flex; align-items: center; gap: 15px; z-index: 1050; transform: translateY(100px); opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        .glass-hud-alert {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(220, 53, 69, 0.4);
+            border-left: 6px solid #dc3545;
+            box-shadow: 0 15px 35px rgba(220, 53, 69, 0.25);
+            border-radius: 12px;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 1050;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
         .glass-hud-alert.show { transform: translateY(0); opacity: 1; }
-        .pulsing-red-dot { width: 14px; height: 14px; background-color: #dc3545; border-radius: 50%; box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); animation: pulse-red 1.5s infinite; }
-        @keyframes pulse-red { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(220, 53, 69, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
+
+        .pulsing-red-dot {
+            width: 14px;
+            height: 14px;
+            background-color: #dc3545;
+            border-radius: 50%;
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+            animation: pulse-red 1.5s infinite;
+        }
+
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 12px rgba(220, 53, 69, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+
+        @media (max-width: 991.98px) {
+            {% if es_laboratorio %}
+                body {
+                    background-image: linear-gradient(rgba(240, 244, 248, 0.82), rgba(240, 244, 248, 0.82)), url("{% static 'tracking/images/bg-app-mobile.webp' %}");
+                }
+            {% elif es_epidemiologia %}
+                body {
+                    background-image: linear-gradient(rgba(245, 240, 250, 0.84), rgba(245, 240, 250, 0.84)), url("{% static 'tracking/images/bg-app-mobile.webp' %}");
+                }
+            {% else %}
+                body {
+                    background-image: linear-gradient(rgba(235, 247, 244, 0.84), rgba(235, 247, 244, 0.84)), url("{% static 'tracking/images/bg-app-mobile.webp' %}");
+                }
+            {% endif %}
+
+            body { background-attachment: scroll; }
+            .glass-capsule { border-radius: 24px; }
+        }
+
+        @media (prefers-reduced-data: reduce) {
+            body { background-image: linear-gradient(135deg, #edf3f8 0%, #dce9f5 100%); }
+        }
     </style>
 </head>
 <body>
@@ -61,62 +251,70 @@
 <div id="sitme-loader">
     <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
     <h5 class="fw-bold" style="color: #084298;">SITME HVRG</h5>
-    <p class="text-muted small">Cargando módulo de laboratorio...</p>
+    <p class="text-muted small">Cargando modulo de laboratorio...</p>
 </div>
 
 <div class="container mt-4 mb-5">
-    
     <div class="row mb-4 align-items-center p-3 mx-0 glass-capsule">
         <div class="col-auto">
             <img src="{% static 'tracking/images/logo-hospital.png' %}" alt="Logo" style="height: 70px;">
         </div>
         <div class="col">
-            <h3 class="fw-bold mb-0" style="color: #084298;">SITME - Laboratorio Clínico</h3>
-            <p class="text-secondary mb-0 fw-semibold" style="font-size: 0.95rem;">Sistema Integrado de Trazabilidad de Muestras Epidemiológicas</p>
+            <h3 class="fw-bold mb-0" style="color: #084298;">SITME - Laboratorio Clinico</h3>
+            <p class="text-secondary mb-0 fw-semibold" style="font-size: 0.95rem;">Sistema Integrado de Trazabilidad de Muestras Epidemiologicas</p>
         </div>
     </div>
 
     <div class="glass-container border-0 overflow-hidden">
-        
+        {% if messages %}
+        <div class="px-3 pt-3">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }} border-0 shadow-sm mb-3">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         <div class="institutional-header d-flex justify-content-between align-items-center p-3 border-0">
             <h5 class="mb-0 fw-bold">Tablero de Tracking en Tiempo Real</h5>
             <div>
                 {% if user.is_authenticated %}
-                    <span class="badge badge-rol me-2 px-2 py-1 shadow-sm">{{ user.first_name }}</span>
-                    
-                    {% if user.is_staff or user.username == 'epidemiologia' %}
-                        <a href="{% url 'estadisticas' %}" class="btn btn-warning btn-sm shadow-sm fw-bold border-0 text-dark me-2">📊 Reportes</a>
+                    <span class="badge badge-rol me-2 px-2 py-1 shadow-sm">{{ rol_usuario }}</span>
+
+                    {% if puede_ver_reportes %}
+                        <a href="{% url 'estadisticas' %}" class="btn btn-warning btn-sm shadow-sm fw-bold border-0 text-dark me-2">Reportes</a>
                     {% endif %}
 
-                    {% if user.username != 'epidemiologia' %}
-                        <a href="{% url 'crear_orden' %}" class="btn bg-white btn-sm fw-bold border-0 px-3" style="color: #084298 !important; box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0,0,0,0.2) !important';" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.15) !important';">+ Nueva Solicitud</a>
+                    {% if puede_crear_ordenes %}
+                        <a href="{% url 'crear_orden' %}" class="btn bg-white btn-sm fw-bold border-0 px-3" style="color: #084298 !important; box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;">+ Nueva Solicitud</a>
                     {% endif %}
                     <form action="{% url 'logout' %}" method="post" class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-outline-light btn-sm ms-2 opacity-75 border-0">Salir</button>
                     </form>
                 {% else %}
-                    <a href="{% url 'login' %}" class="btn btn-light text-primary btn-sm fw-bold shadow-sm">Iniciar Sesión para Solicitar</a>
+                    <a href="{% url 'login' %}" class="btn btn-light text-primary btn-sm fw-bold shadow-sm">Iniciar sesion para solicitar</a>
                 {% endif %}
             </div>
         </div>
-        
+
         <div class="p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div class="d-flex gap-2 align-items-center">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
                 <span class="fw-bold text-secondary me-2" style="font-size: 0.85rem;"><small>FILTRAR:</small></span>
-                <a href="{% url 'dashboard' %}" class="btn btn-sm {% if not estado_actual or estado_actual == 'TODAS' %}btn-dark{% else %}btn-outline-dark{% endif %} fw-semibold">📋 Todas</a>
-                <a href="?estado=SOLICITADO" class="btn btn-sm {% if estado_actual == 'SOLICITADO' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-semibold">🔴 Pendientes</a>
-                <a href="?estado=TOMADO" class="btn btn-sm {% if estado_actual == 'TOMADO' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %} fw-semibold">🟡 Tomadas</a>
-                <a href="?estado=ENVIADO" class="btn btn-sm {% if estado_actual == 'ENVIADO' %}btn-info text-dark{% else %}btn-outline-info text-dark{% endif %} fw-semibold">🔵 Enviadas</a>
-                <a href="?estado=RESULTADO" class="btn btn-sm {% if estado_actual == 'RESULTADO' %}btn-success{% else %}btn-outline-success{% endif %} fw-semibold">🟢 Resultados</a>
+                <a href="{% url 'dashboard' %}" class="btn btn-sm {% if not estado_actual or estado_actual == 'TODAS' %}btn-dark{% else %}btn-outline-dark{% endif %} fw-semibold">Todas</a>
+                <a href="?estado=SOLICITADO" class="btn btn-sm {% if estado_actual == 'SOLICITADO' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-semibold">Pendientes</a>
+                <a href="?estado=TOMADO" class="btn btn-sm {% if estado_actual == 'TOMADO' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %} fw-semibold">Tomadas</a>
+                <a href="?estado=ENVIADO" class="btn btn-sm {% if estado_actual == 'ENVIADO' %}btn-info text-dark{% else %}btn-outline-info text-dark{% endif %} fw-semibold">Enviadas</a>
+                <a href="?estado=RESULTADO" class="btn btn-sm {% if estado_actual == 'RESULTADO' %}btn-success{% else %}btn-outline-success{% endif %} fw-semibold">Resultados</a>
             </div>
 
-            <form method="GET" action="{% url 'dashboard' %}" class="d-flex" style="max-width: 320px; width: 100%;">
+            <form method="GET" action="{% url 'dashboard' %}" class="d-flex" style="max-width: 360px; width: 100%;">
                 <input type="hidden" name="estado" value="{{ estado_actual|default_if_none:'' }}">
-                <input type="text" name="q" class="form-control form-control-sm me-2 border-secondary border-opacity-25" style="background: rgba(255,255,255,0.8);" placeholder="🔍 Buscar paciente o cama..." value="{{ request.GET.q|default_if_none:'' }}">
+                <input type="text" name="q" class="form-control form-control-sm me-2 border-secondary border-opacity-25" style="background: rgba(255,255,255,0.8);" placeholder="Buscar paciente, cama, examen o medico..." value="{{ request.GET.q|default_if_none:'' }}">
                 <button type="submit" class="btn btn-primary btn-sm fw-bold">Buscar</button>
                 {% if request.GET.q %}
-                    <a href="{% url 'dashboard' %}?estado={{ estado_actual|default_if_none:'' }}" class="btn btn-outline-secondary btn-sm ms-2 border-0" title="Limpiar búsqueda">✕</a>
+                    <a href="{% url 'dashboard' %}?estado={{ estado_actual|default_if_none:'' }}" class="btn btn-outline-secondary btn-sm ms-2 border-0" title="Limpiar busqueda">X</a>
                 {% endif %}
             </form>
         </div>
@@ -131,7 +329,7 @@
                             <th>Cama/Servicio</th>
                             <th>Examen</th>
                             <th>Estado</th>
-                            <th class="pe-4">Médico</th>
+                            <th class="pe-4">Medico</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -151,41 +349,98 @@
                                 {% else %}
                                     <span class="badge badge-custom bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">{{ orden.get_estado_display }}</span>
                                 {% endif %}
-                                
-                                <div class="mt-1" style="font-size: 0.65rem; color: #6c757d; font-weight: 600;">
-                                    {% if orden.estado == 'TOMADO' and orden.laboratorista_toma %}
-                                        👨‍🔬 Toma: {{ orden.laboratorista_toma.first_name }}
-                                    {% elif orden.estado == 'ENVIADO' and orden.laboratorista_envio %}
-                                        📦 Envío: {{ orden.laboratorista_envio.first_name }}
-                                    {% elif orden.estado == 'RESULTADO' and orden.laboratorista_resultado %}
-                                        ✅ Procesó: {{ orden.laboratorista_resultado.first_name }}
+
+                                <div class="timeline-meta mt-2">
+                                    <div>Solicitud: {{ orden.fecha_solicitud|date:"d/m/Y H:i" }}</div>
+                                    {% if orden.fecha_toma %}
+                                        <div>Toma: {{ orden.fecha_toma|date:"d/m/Y H:i" }}{% if orden.laboratorista_toma %} - {{ orden.laboratorista_toma.get_full_name|default:orden.laboratorista_toma.username }}{% endif %}</div>
+                                    {% endif %}
+                                    {% if orden.fecha_envio %}
+                                        <div>Envio: {{ orden.fecha_envio|date:"d/m/Y H:i" }}{% if orden.laboratorista_envio %} - {{ orden.laboratorista_envio.get_full_name|default:orden.laboratorista_envio.username }}{% endif %}</div>
+                                    {% endif %}
+                                    {% if orden.fecha_resultado %}
+                                        <div>Resultado: {{ orden.fecha_resultado|date:"d/m/Y H:i" }}{% if orden.laboratorista_resultado %} - {{ orden.laboratorista_resultado.get_full_name|default:orden.laboratorista_resultado.username }}{% endif %}</div>
                                     {% endif %}
                                 </div>
 
                                 <div class="d-flex flex-column gap-2 mt-2">
                                     {% if orden.archivo_resultado %}
-                                        <a href="{{ orden.archivo_resultado.url }}" target="_blank" class="btn btn-pdf w-100">
-                                            <span>📥</span> DESCARGAR PDF
+                                        <a href="{{ orden.archivo_resultado.url }}" target="_blank" class="btn btn-pdf w-100" rel="noopener">
+                                            DESCARGAR PDF
                                         </a>
                                     {% endif %}
 
-                                    {% if user.is_staff %}
+                                    <button class="btn btn-outline-secondary btn-sm fw-semibold" type="button" data-bs-toggle="collapse" data-bs-target="#historial-{{ orden.id }}" aria-expanded="false" aria-controls="historial-{{ orden.id }}">
+                                        Ver historial
+                                    </button>
+
+                                    {% if puede_gestionar_ordenes %}
                                     <div class="dropdown w-100">
                                         <button class="btn btn-acciones w-100 dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                                            ⚙️ Acciones Lab
+                                            Acciones Lab
                                         </button>
                                         <ul class="dropdown-menu shadow-lg border-0" style="border-radius: 10px;">
-                                        <li><a class="dropdown-item small fw-bold text-primary" href="{% url 'editar_orden' orden.id %}">✏️ Editar Datos</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item small fw-bold text-danger" href="{% url 'cambiar_estado' orden.id 'SOLICITADO' %}">🔴 Marcar Solicitado</a></li>
-                                        <li><a class="dropdown-item small fw-bold text-warning" href="{% url 'cambiar_estado' orden.id 'TOMADO' %}">🟡 Marcar Tomada</a></li>
-                                        <li><a class="dropdown-item small fw-bold text-info" href="{% url 'cambiar_estado' orden.id 'ENVIADO' %}">🔵 Marcar LIMA/DIRESA</a></li>
-                                        <li><a class="dropdown-item small fw-bold text-success" href="{% url 'cambiar_estado' orden.id 'RESULTADO' %}">🟢 Marcar Resultado (Recibido)</a></li>
-                                        <li><hr class="dropdown-divider"></li>
-                                        <li><a class="dropdown-item small fw-bold text-success" href="{% url 'subir_resultado' orden.id %}">📎 Subir/Actualizar PDF</a></li>
-                                    </ul>
+                                            <li><a class="dropdown-item small fw-bold text-primary" href="{% url 'editar_orden' orden.id %}">Editar Datos</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="post" action="{% url 'cambiar_estado' orden.id %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="nuevo_estado" value="SOLICITADO">
+                                                    <button type="submit" class="dropdown-item small fw-bold text-danger">Marcar Solicitado</button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="post" action="{% url 'cambiar_estado' orden.id %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="nuevo_estado" value="TOMADO">
+                                                    <button type="submit" class="dropdown-item small fw-bold text-warning">Marcar Tomada</button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="post" action="{% url 'cambiar_estado' orden.id %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="nuevo_estado" value="ENVIADO">
+                                                    <button type="submit" class="dropdown-item small fw-bold text-info">Marcar Lima/DIRESA</button>
+                                                </form>
+                                            </li>
+                                            <li>
+                                                <form method="post" action="{% url 'cambiar_estado' orden.id %}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="nuevo_estado" value="RESULTADO">
+                                                    <button type="submit" class="dropdown-item small fw-bold text-success">Marcar Resultado</button>
+                                                </form>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item small fw-bold text-success" href="{% url 'subir_resultado' orden.id %}">Subir/Actualizar PDF</a></li>
+                                        </ul>
                                     </div>
                                     {% endif %}
+                                </div>
+
+                                <div class="collapse" id="historial-{{ orden.id }}">
+                                    <div class="event-timeline">
+                                        {% for evento in orden.eventos.all %}
+                                        <div class="event-item">
+                                            <div class="event-date">{{ evento.fecha_evento|date:"d/m/Y H:i" }}</div>
+                                            <div class="event-title">{{ evento.get_tipo_evento_display }}</div>
+                                            <div class="event-detail">{{ evento.descripcion }}</div>
+                                            <div class="event-detail">
+                                                {% if evento.usuario %}
+                                                    Responsable: {{ evento.usuario.get_full_name|default:evento.usuario.username }}
+                                                {% else %}
+                                                    Responsable: Sistema
+                                                {% endif %}
+                                            </div>
+                                            {% if evento.estado_anterior or evento.estado_nuevo %}
+                                            <div class="event-detail">
+                                                Estado: {{ evento.estado_anterior|default:"-" }} -> {{ evento.estado_nuevo|default:"-" }}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                        {% empty %}
+                                        <div class="event-detail">No hay eventos registrados aun para esta muestra.</div>
+                                        {% endfor %}
+                                    </div>
                                 </div>
                             </td>
                             <td class="pe-4 text-secondary small fw-semibold">{{ orden.medico_solicitante.username|default:"N/A" }}</td>
@@ -193,8 +448,8 @@
                         {% empty %}
                         <tr>
                             <td colspan="6" class="text-center py-5">
-                                <h4 class="mb-1 text-secondary fw-bold">No hay órdenes registradas</h4>
-                                <p class="text-muted mb-0">Las solicitudes nuevas aparecerán aquí.</p>
+                                <h4 class="mb-1 text-secondary fw-bold">No hay ordenes registradas</h4>
+                                <p class="text-muted mb-0">Las solicitudes nuevas apareceran aqui.</p>
                             </td>
                         </tr>
                         {% endfor %}
@@ -205,18 +460,16 @@
     </div>
 </div>
 
-{% if user.is_staff %}
+{% if puede_gestionar_ordenes %}
 <div id="hud-alerta" class="glass-hud-alert">
     <div class="pulsing-red-dot"></div>
     <div class="d-flex flex-column">
         <span class="text-danger fw-bold lh-1" style="font-size: 1.1rem;">
-            <span id="contador-hud" style="font-size: 1.3rem;">0</span> EXÁMENES EN COLA
+            <span id="contador-hud" style="font-size: 1.3rem;">0</span> EXAMENES EN COLA
         </span>
-        <small class="text-muted fw-semibold" style="font-size: 0.75rem;">Requieren atención en Laboratorio</small>
+        <small class="text-muted fw-semibold" style="font-size: 0.75rem;">Requieren atencion en Laboratorio</small>
     </div>
 </div>
-
-<audio id="alerta-sonora" src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" preload="auto"></audio>
 {% endif %}
 
 <div class="firma-hacker">
@@ -226,48 +479,50 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // --- 1. SPINNER INICIAL ---
         if (!sessionStorage.getItem('sitme_cargado')) {
             const loader = document.getElementById('sitme-loader');
             loader.style.display = 'flex';
-            setTimeout(() => { loader.style.opacity = '0'; setTimeout(() => { loader.style.display = 'none'; }, 300); }, 300); 
+            setTimeout(() => {
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    loader.style.display = 'none';
+                }, 300);
+            }, 250);
             sessionStorage.setItem('sitme_cargado', 'true');
         }
 
-        // --- 2. RECARGA INTELIGENTE ---
         setInterval(function() {
-            let buscador = document.querySelector('input[name="q"]');
-            let isTyping = buscador && buscador.value !== "";
-            let isDropdownOpen = document.querySelector('.dropdown-menu.show') !== null;
-            
-            if (!isTyping && !isDropdownOpen) {
+            if (document.hidden) {
+                return;
+            }
+
+            const buscador = document.querySelector('input[name="q"]');
+            const isTyping = buscador && buscador.value !== "";
+            const isDropdownOpen = document.querySelector('.dropdown-menu.show') !== null;
+            const expandedHistory = document.querySelector('.collapse.show') !== null;
+            const focusedElement = document.activeElement;
+            const isInteracting = focusedElement && ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(focusedElement.tagName);
+
+            if (!isTyping && !isDropdownOpen && !expandedHistory && !isInteracting) {
                 window.location.reload();
             }
-        }, 15000); 
+        }, 30000);
 
-        // --- 3. LÓGICA DE ALARMA EXCLUSIVA PARA EL STAFF ---
-        {% if user.is_staff %}
+        {% if puede_gestionar_ordenes %}
         let pendientesEnCola = 0;
         document.querySelectorAll('span.estado-alerta').forEach(function() {
             pendientesEnCola++;
         });
 
         if (pendientesEnCola > 0) {
-            let hud = document.getElementById('hud-alerta');
+            const hud = document.getElementById('hud-alerta');
             if (hud) {
                 document.getElementById('contador-hud').innerText = pendientesEnCola;
-                setTimeout(() => { hud.classList.add('show'); }, 500);
-            }
-
-            let audio = document.getElementById('alerta-sonora');
-            if (audio) {
-                let playPromise = audio.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => console.log("Clic inicial necesario para el audio."));
-                }
+                setTimeout(() => {
+                    hud.classList.add('show');
+                }, 500);
             }
         }
         {% endif %}

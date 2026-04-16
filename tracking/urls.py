@@ -9,7 +9,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(next_page='dashboard'), name='logout'),
     
     # NUEVA RUTA PARA EL CAMBIO DE ESTADO
-    path('cambiar-estado/<int:orden_id>/<str:nuevo_estado>/', views.cambiar_estado, name='cambiar_estado'),
+    path('cambiar-estado/<int:orden_id>/', views.cambiar_estado, name='cambiar_estado'),
     # NUEVA RUTA PARA SUBIR RESULTADOS
     path('subir-resultado/<int:orden_id>/', views.subir_resultado, name='subir_resultado'),
     path('editar-solicitud/<int:orden_id>/', views.editar_orden, name='editar_orden'),
