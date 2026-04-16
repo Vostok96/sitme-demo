@@ -1,11 +1,20 @@
 from django import forms
+from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 
 from .models import CatalogoExamen, OrdenExamen
+from .permissions import GRUPO_EPIDEMIOLOGIA, GRUPO_LABORATORIO, GRUPO_MEDICO
 
 
 MAX_RESULTADO_MB = 10
+
+ROL_CHOICES = [
+    (GRUPO_MEDICO, 'Medico / Servicio'),
+    (GRUPO_LABORATORIO, 'Laboratorio'),
+    (GRUPO_EPIDEMIOLOGIA, 'Epidemiologia'),
+]
+
 
 class OrdenExamenForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -21,18 +30,15 @@ class OrdenExamenForm(forms.ModelForm):
 
     class Meta:
         model = OrdenExamen
-        # Solo pedimos estos datos al médico. El 'estado' empieza en 'SOLICITADO' por defecto.
         fields = ['paciente_nombre', 'cama', 'tipo_examen', 'notas']
-        
-        # Le agregamos las clases de Bootstrap para que se vea profesional automáticamente
         widgets = {
-            'paciente_nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Juan Pérez'}),
-            'cama': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Pediatría - Cama 4'}),
+            'paciente_nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Juan Perez'}),
+            'cama': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Pediatria - Cama 4'}),
             'tipo_examen': forms.Select(attrs={'class': 'form-select'}),
-            'notas': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Justificación o detalle clínico...'}),
+            'notas': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Justificacion o detalle clinico...'}),
         }
 
-        # NUEVO FORMULARIO: Solo para que el Laboratorio suba el PDF
+
 class SubirResultadoForm(forms.ModelForm):
     def clean_archivo_resultado(self):
         archivo = self.cleaned_data.get('archivo_resultado')
@@ -60,3 +66,59 @@ class SubirResultadoForm(forms.ModelForm):
         widgets = {
             'archivo_resultado': forms.FileInput(attrs={'class': 'form-control'})
         }
+
+
+class CrearUsuarioSITMEForm(forms.ModelForm):
+    rol = forms.ChoiceField(
+        choices=ROL_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    password = forms.CharField(
+        required=False,
+        help_text='Si lo dejas vacio, SITME generara una contrasena temporal segura.',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Dejar vacio para generar automaticamente'}),
+    )
+    is_active = forms.BooleanField(
+        required=False,
+        initial=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+    )
+
+    class Meta:
+        model = User
+        fields = ['username', 'first_name', 'email', 'is_active']
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. uci o nombre.apellido'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre visible del servicio o persona'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Opcional'}),
+        }
+
+    def clean_username(self):
+        username = self.cleaned_data['username'].strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError('Ese usuario ya existe.')
+        return username
+
+    def save(self, commit=True):
+        usuario = super().save(commit=False)
+        usuario.username = self.cleaned_data['username'].strip()
+        usuario.email = self.cleaned_data.get('email', '').strip()
+        usuario.is_staff = self.cleaned_data['rol'] == GRUPO_LABORATORIO
+        usuario.is_superuser = False
+
+        if commit:
+            usuario.save()
+            self._asignar_grupo(usuario)
+
+        return usuario
+
+    def _asignar_grupo(self, usuario):
+        Group.objects.get_or_create(name=GRUPO_LABORATORIO)
+        Group.objects.get_or_create(name=GRUPO_EPIDEMIOLOGIA)
+        Group.objects.get_or_create(name=GRUPO_MEDICO)
+        usuario.groups.clear()
+        usuario.groups.add(Group.objects.get(name=self.cleaned_data['rol']))
+
+
+class ResetPasswordUsuarioForm(forms.Form):
+    usuario_id = forms.IntegerField(widget=forms.HiddenInput())

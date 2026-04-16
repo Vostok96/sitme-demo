@@ -1,14 +1,18 @@
+import secrets
+
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from .forms import OrdenExamenForm, SubirResultadoForm
+from .forms import CrearUsuarioSITMEForm, OrdenExamenForm, ResetPasswordUsuarioForm, SubirResultadoForm
 from .models import EventoOrden, OrdenExamen
 from .permissions import (
     obtener_contexto_roles,
+    puede_administrar_usuarios,
     puede_crear_ordenes,
     puede_gestionar_ordenes,
     puede_ver_reportes,
@@ -16,6 +20,11 @@ from .permissions import (
 
 
 ESTADOS_VALIDOS = {estado for estado, _ in OrdenExamen.ESTADO_CHOICES}
+
+
+def generar_password_temporal(longitud=12):
+    alfabeto = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@#$'
+    return ''.join(secrets.choice(alfabeto) for _ in range(longitud))
 
 
 def registrar_evento(
@@ -56,6 +65,10 @@ def registrar_cambio_estado(orden, nuevo_estado, usuario):
 
 def construir_contexto_base(user):
     return obtener_contexto_roles(user)
+
+
+def obtener_usuarios_para_panel():
+    return User.objects.prefetch_related('groups').order_by('username')
 
 
 @login_required(login_url='login')
@@ -260,3 +273,56 @@ def estadisticas(request):
     }
     context.update(construir_contexto_base(request.user))
     return render(request, 'tracking/estadisticas.html', context)
+
+
+@login_required(login_url='login')
+def gestionar_usuarios(request):
+    if not puede_administrar_usuarios(request.user):
+        messages.error(request, 'Tu usuario no tiene permisos para administrar usuarios.')
+        return redirect('dashboard')
+
+    password_generada = None
+    usuario_afectado = None
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+
+        if accion == 'crear_usuario':
+            form = CrearUsuarioSITMEForm(request.POST)
+            reset_form = ResetPasswordUsuarioForm()
+
+            if form.is_valid():
+                password_generada = form.cleaned_data.get('password') or generar_password_temporal()
+                usuario = form.save()
+                usuario.set_password(password_generada)
+                usuario.save(update_fields=['password'])
+                usuario_afectado = usuario
+                messages.success(request, f'Usuario {usuario.username} creado correctamente.')
+                form = CrearUsuarioSITMEForm()
+        elif accion == 'reset_password':
+            reset_form = ResetPasswordUsuarioForm(request.POST)
+            form = CrearUsuarioSITMEForm()
+
+            if reset_form.is_valid():
+                usuario = get_object_or_404(User, id=reset_form.cleaned_data['usuario_id'])
+                password_generada = generar_password_temporal()
+                usuario.set_password(password_generada)
+                usuario.save(update_fields=['password'])
+                usuario_afectado = usuario
+                messages.success(request, f'Se genero una nueva contrasena temporal para {usuario.username}.')
+        else:
+            form = CrearUsuarioSITMEForm()
+            reset_form = ResetPasswordUsuarioForm()
+    else:
+        form = CrearUsuarioSITMEForm()
+        reset_form = ResetPasswordUsuarioForm()
+
+    context = {
+        'form': form,
+        'reset_form': reset_form,
+        'usuarios': obtener_usuarios_para_panel(),
+        'password_generada': password_generada,
+        'usuario_afectado': usuario_afectado,
+    }
+    context.update(construir_contexto_base(request.user))
+    return render(request, 'tracking/usuarios.html', context)

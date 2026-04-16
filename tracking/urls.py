@@ -14,4 +14,5 @@ urlpatterns = [
     path('subir-resultado/<int:orden_id>/', views.subir_resultado, name='subir_resultado'),
     path('editar-solicitud/<int:orden_id>/', views.editar_orden, name='editar_orden'),
     path('estadisticas/', views.estadisticas, name='estadisticas'),
+    path('usuarios/', views.gestionar_usuarios, name='gestionar_usuarios'),
 ]

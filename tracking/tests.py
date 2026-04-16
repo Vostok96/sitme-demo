@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from .forms import OrdenExamenForm, SubirResultadoForm
 from .models import CatalogoExamen, EventoOrden, OrdenExamen
-from .permissions import GRUPO_EPIDEMIOLOGIA, GRUPO_LABORATORIO
+from .permissions import GRUPO_EPIDEMIOLOGIA, GRUPO_LABORATORIO, GRUPO_MEDICO
 
 
 class TrackingFlowTests(TestCase):
@@ -122,3 +122,35 @@ class TrackingFlowTests(TestCase):
         response_creacion = self.client.get(reverse('crear_orden'))
         self.assertEqual(response_creacion.status_code, 302)
         self.assertEqual(OrdenExamen.objects.count(), 1)
+
+    def test_laboratorio_puede_crear_usuario_desde_panel(self):
+        self.client.login(username='laboratorio', password='demo12345')
+        response = self.client.post(
+            reverse('gestionar_usuarios'),
+            {
+                'accion': 'crear_usuario',
+                'username': 'nuevo_servicio',
+                'first_name': 'Nuevo Servicio',
+                'email': '',
+                'rol': GRUPO_MEDICO,
+                'password': 'Temporal123@',
+                'is_active': 'on',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        nuevo_usuario = User.objects.get(username='nuevo_servicio')
+        self.assertTrue(nuevo_usuario.check_password('Temporal123@'))
+        self.assertTrue(nuevo_usuario.groups.filter(name=GRUPO_MEDICO).exists())
+
+    def test_laboratorio_puede_resetear_password_desde_panel(self):
+        self.client.login(username='laboratorio', password='demo12345')
+        response = self.client.post(
+            reverse('gestionar_usuarios'),
+            {
+                'accion': 'reset_password',
+                'usuario_id': self.medico.id,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.medico.refresh_from_db()
+        self.assertContains(response, 'Contrasena temporal generada')

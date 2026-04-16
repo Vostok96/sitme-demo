@@ -5,9 +5,15 @@ services:
     build: .
     container_name: sitme_produccion
     restart: always
+    environment:
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DEBUG: ${DJANGO_DEBUG:-False}
+      DJANGO_ENABLE_HTTPS_SECURITY: ${DJANGO_ENABLE_HTTPS_SECURITY:-True}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-sitme.microbiolog-ia.com,localhost,127.0.0.1}
+      DJANGO_CSRF_TRUSTED_ORIGINS: ${DJANGO_CSRF_TRUSTED_ORIGINS:-https://sitme.microbiolog-ia.com}
+      DJANGO_TIME_ZONE: ${DJANGO_TIME_ZONE:-America/Lima}
     ports:
-      - "8080:8000" # Esto significa: El NAS lo mostrará en el puerto 8080
+      - "8080:8000"
     volumes:
-      # Esta línea es VITAL. Guarda la base de datos en tu NAS de forma permanente
       - ./db.sqlite3:/app/db.sqlite3
-      - ./media:/app/media   # Para que no se pierdan los PDFs de resultados
+      - ./media:/app/media

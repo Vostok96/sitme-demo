@@ -286,6 +286,10 @@
                         <a href="{% url 'estadisticas' %}" class="btn btn-warning btn-sm shadow-sm fw-bold border-0 text-dark me-2">Reportes</a>
                     {% endif %}
 
+                    {% if puede_administrar_usuarios %}
+                        <a href="{% url 'gestionar_usuarios' %}" class="btn btn-light btn-sm shadow-sm fw-bold border-0 text-primary me-2">Usuarios</a>
+                    {% endif %}
+
                     {% if puede_crear_ordenes %}
                         <a href="{% url 'crear_orden' %}" class="btn bg-white btn-sm fw-bold border-0 px-3" style="color: #084298 !important; box-shadow: 0 4px 15px rgba(0,0,0,0.15) !important;">+ Nueva Solicitud</a>
                     {% endif %}

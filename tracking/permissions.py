@@ -36,6 +36,10 @@ def puede_crear_ordenes(user):
     return user.is_authenticated and not es_epidemiologia(user)
 
 
+def puede_administrar_usuarios(user):
+    return user.is_authenticated and (user.is_superuser or es_laboratorio(user))
+
+
 def obtener_contexto_roles(user):
     laboratorio = es_laboratorio(user)
     epidemiologia = es_epidemiologia(user)
@@ -53,5 +57,6 @@ def obtener_contexto_roles(user):
         'puede_gestionar_ordenes': laboratorio,
         'puede_ver_reportes': laboratorio or epidemiologia,
         'puede_crear_ordenes': user.is_authenticated and not epidemiologia,
+        'puede_administrar_usuarios': puede_administrar_usuarios(user),
         'rol_usuario': rol_usuario,
     }
