@@ -10,9 +10,9 @@ from .permissions import GRUPO_EPIDEMIOLOGIA, GRUPO_LABORATORIO, GRUPO_MEDICO
 MAX_RESULTADO_MB = 10
 
 ROL_CHOICES = [
-    (GRUPO_MEDICO, 'Medico / Servicio'),
-    (GRUPO_LABORATORIO, 'Laboratorio'),
-    (GRUPO_EPIDEMIOLOGIA, 'Epidemiologia'),
+    (GRUPO_MEDICO, "Médico / Servicio"),
+    (GRUPO_LABORATORIO, "Laboratorio"),
+    (GRUPO_EPIDEMIOLOGIA, "Epidemiología"),
 ]
 
 
@@ -26,84 +26,108 @@ class OrdenExamenForm(forms.ModelForm):
                 Q(activo=True) | Q(pk=self.instance.tipo_examen_id)
             )
 
-        self.fields['tipo_examen'].queryset = queryset.order_by('nombre')
+        self.fields["tipo_examen"].queryset = queryset.order_by("nombre")
 
     class Meta:
         model = OrdenExamen
-        fields = ['paciente_nombre', 'cama', 'tipo_examen', 'notas']
+        fields = ["paciente_nombre", "cama", "tipo_examen", "notas"]
         widgets = {
-            'paciente_nombre': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Juan Perez'}),
-            'cama': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Pediatria - Cama 4'}),
-            'tipo_examen': forms.Select(attrs={'class': 'form-select'}),
-            'notas': forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': 'Justificacion o detalle clinico...'}),
+            "paciente_nombre": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Ej. Juan Pérez"}
+            ),
+            "cama": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Ej. Pediatría - Cama 4"}
+            ),
+            "tipo_examen": forms.Select(attrs={"class": "form-select"}),
+            "notas": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Justificación o detalle clínico...",
+                }
+            ),
         }
 
 
 class SubirResultadoForm(forms.ModelForm):
     def clean_archivo_resultado(self):
-        archivo = self.cleaned_data.get('archivo_resultado')
+        archivo = self.cleaned_data.get("archivo_resultado")
 
         if not archivo:
             return archivo
 
-        content_type = getattr(archivo, 'content_type', '')
-        if content_type and content_type != 'application/pdf':
-            raise ValidationError('Solo se permiten archivos PDF.')
+        content_type = getattr(archivo, "content_type", "")
+        if content_type and content_type != "application/pdf":
+            raise ValidationError("Solo se permiten archivos PDF.")
 
-        if not archivo.name.lower().endswith('.pdf'):
-            raise ValidationError('El archivo debe tener extension .pdf.')
+        if not archivo.name.lower().endswith(".pdf"):
+            raise ValidationError("El archivo debe tener extensión .pdf.")
 
         if archivo.size > MAX_RESULTADO_MB * 1024 * 1024:
             raise ValidationError(
-                f'El PDF supera el limite de {MAX_RESULTADO_MB} MB.'
+                f"El PDF supera el límite de {MAX_RESULTADO_MB} MB."
             )
 
         return archivo
 
     class Meta:
         model = OrdenExamen
-        fields = ['archivo_resultado']
+        fields = ["archivo_resultado"]
         widgets = {
-            'archivo_resultado': forms.FileInput(attrs={'class': 'form-control'})
+            "archivo_resultado": forms.FileInput(attrs={"class": "form-control"})
         }
 
 
 class CrearUsuarioSITMEForm(forms.ModelForm):
     rol = forms.ChoiceField(
         choices=ROL_CHOICES,
-        widget=forms.Select(attrs={'class': 'form-select'}),
+        widget=forms.Select(attrs={"class": "form-select"}),
     )
     password = forms.CharField(
         required=False,
-        help_text='Si lo dejas vacio, SITME generara una contrasena temporal segura.',
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Dejar vacio para generar automaticamente'}),
+        help_text="Si lo dejas vacío, SITME generará una contraseña temporal segura.",
+        widget=forms.TextInput(
+            attrs={
+                "class": "form-control",
+                "placeholder": "Dejar vacío para generar automáticamente",
+            }
+        ),
     )
     is_active = forms.BooleanField(
         required=False,
         initial=True,
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
     )
 
     class Meta:
         model = User
-        fields = ['username', 'first_name', 'email', 'is_active']
+        fields = ["username", "first_name", "email", "is_active"]
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. uci o nombre.apellido'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre visible del servicio o persona'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Opcional'}),
+            "username": forms.TextInput(
+                attrs={"class": "form-control", "placeholder": "Ej. uci o nombre.apellido"}
+            ),
+            "first_name": forms.TextInput(
+                attrs={
+                    "class": "form-control",
+                    "placeholder": "Nombre visible del servicio o persona",
+                }
+            ),
+            "email": forms.EmailInput(
+                attrs={"class": "form-control", "placeholder": "Opcional"}
+            ),
         }
 
     def clean_username(self):
-        username = self.cleaned_data['username'].strip()
+        username = self.cleaned_data["username"].strip()
         if User.objects.filter(username__iexact=username).exists():
-            raise ValidationError('Ese usuario ya existe.')
+            raise ValidationError("Ese usuario ya existe.")
         return username
 
     def save(self, commit=True):
         usuario = super().save(commit=False)
-        usuario.username = self.cleaned_data['username'].strip()
-        usuario.email = self.cleaned_data.get('email', '').strip()
-        usuario.is_staff = self.cleaned_data['rol'] == GRUPO_LABORATORIO
+        usuario.username = self.cleaned_data["username"].strip()
+        usuario.email = self.cleaned_data.get("email", "").strip()
+        usuario.is_staff = self.cleaned_data["rol"] == GRUPO_LABORATORIO
         usuario.is_superuser = False
 
         if commit:
@@ -117,7 +141,7 @@ class CrearUsuarioSITMEForm(forms.ModelForm):
         Group.objects.get_or_create(name=GRUPO_EPIDEMIOLOGIA)
         Group.objects.get_or_create(name=GRUPO_MEDICO)
         usuario.groups.clear()
-        usuario.groups.add(Group.objects.get(name=self.cleaned_data['rol']))
+        usuario.groups.add(Group.objects.get(name=self.cleaned_data["rol"]))
 
 
 class ResetPasswordUsuarioForm(forms.Form):

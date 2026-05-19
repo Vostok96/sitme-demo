@@ -2,4 +2,10 @@ venv/
 __pycache__/
 *.pyc
 staticfiles/
+media/
 .env
+*.bak
+~$*.docx
+PLAN DE MEJORA CONTINUA - SITME*.docx
+QR.png
+tools/

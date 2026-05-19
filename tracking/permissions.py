@@ -1,6 +1,6 @@
-GRUPO_LABORATORIO = 'Laboratorio'
-GRUPO_EPIDEMIOLOGIA = 'Epidemiologia'
-GRUPO_MEDICO = 'Medico'
+GRUPO_LABORATORIO = "Laboratorio"
+GRUPO_EPIDEMIOLOGIA = "Epidemiologia"
+GRUPO_MEDICO = "Medico"
 
 
 def tiene_grupo(user, nombre_grupo):
@@ -19,7 +19,7 @@ def es_laboratorio(user):
 
 def es_epidemiologia(user):
     return user.is_authenticated and (
-        user.username.lower() == 'epidemiologia'
+        user.username.lower() == "epidemiologia"
         or tiene_grupo(user, GRUPO_EPIDEMIOLOGIA)
     )
 
@@ -45,18 +45,18 @@ def obtener_contexto_roles(user):
     epidemiologia = es_epidemiologia(user)
 
     if laboratorio:
-        rol_usuario = 'Laboratorio'
+        rol_usuario = "Laboratorio"
     elif epidemiologia:
-        rol_usuario = 'Epidemiologia'
+        rol_usuario = "Epidemiología"
     else:
-        rol_usuario = 'Medico / Servicio'
+        rol_usuario = "Médico / Servicio"
 
     return {
-        'es_laboratorio': laboratorio,
-        'es_epidemiologia': epidemiologia,
-        'puede_gestionar_ordenes': laboratorio,
-        'puede_ver_reportes': laboratorio or epidemiologia,
-        'puede_crear_ordenes': user.is_authenticated and not epidemiologia,
-        'puede_administrar_usuarios': puede_administrar_usuarios(user),
-        'rol_usuario': rol_usuario,
+        "es_laboratorio": laboratorio,
+        "es_epidemiologia": epidemiologia,
+        "puede_gestionar_ordenes": laboratorio,
+        "puede_ver_reportes": laboratorio or epidemiologia,
+        "puede_crear_ordenes": user.is_authenticated and not epidemiologia,
+        "puede_administrar_usuarios": puede_administrar_usuarios(user),
+        "rol_usuario": rol_usuario,
     }

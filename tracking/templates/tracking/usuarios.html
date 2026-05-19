@@ -58,10 +58,10 @@
 <body>
 <div class="container py-4 py-md-5">
     <div class="glass-container overflow-hidden">
-        <div class="panel-header d-flex justify-content-between align-items-center">
+        <div class="panel-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
             <div>
-                <h3 class="mb-1 fw-bold">Gestion de Usuarios SITME</h3>
-                <p class="mb-0 small opacity-75">Crea cuentas nuevas y genera contrasenas temporales.</p>
+                <h3 class="mb-1 fw-bold">Gestión de usuarios SITME</h3>
+                <p class="mb-0 small opacity-75">Crea cuentas nuevas y genera contraseñas temporales.</p>
             </div>
             <a href="{% url 'dashboard' %}" class="btn btn-light text-primary fw-bold">Volver al tablero</a>
         </div>
@@ -77,10 +77,10 @@
 
             {% if password_generada and usuario_afectado %}
             <div class="alert alert-warning border-0 shadow-sm">
-                <div class="fw-bold mb-1">Contrasena temporal generada</div>
+                <div class="fw-bold mb-1">Contraseña temporal generada</div>
                 <div>Usuario: <strong>{{ usuario_afectado.username }}</strong></div>
-                <div>Contrasena: <code>{{ password_generada }}</code></div>
-                <div class="small mt-2">Guardala ahora. Luego ya no se podra volver a ver en claro.</div>
+                <div>Contraseña: <code>{{ password_generada }}</code></div>
+                <div class="small mt-2">Guárdala ahora. Luego ya no se podrá volver a ver en claro.</div>
             </div>
             {% endif %}
 
@@ -115,7 +115,7 @@
                                 {{ form.rol }}
                             </div>
                             <div class="mb-3">
-                                <label class="form-label fw-semibold">Contrasena inicial</label>
+                                <label class="form-label fw-semibold">Contraseña inicial</label>
                                 {{ form.password }}
                                 <div class="form-text">{{ form.password.help_text }}</div>
                             </div>
@@ -131,7 +131,7 @@
 
                 <div class="col-lg-7">
                     <div class="section-card">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 mb-3">
                             <h5 class="fw-bold text-primary mb-0">Usuarios actuales</h5>
                             <span class="badge bg-primary-subtle text-primary">{{ usuarios|length }} cuentas</span>
                         </div>
@@ -144,7 +144,7 @@
                                         <th>Nombre</th>
                                         <th>Rol</th>
                                         <th>Estado</th>
-                                        <th>Accion</th>
+                                        <th>Acción</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -153,13 +153,11 @@
                                         <td class="fw-bold">{{ usuario.username }}</td>
                                         <td>{{ usuario.first_name|default:"-" }}</td>
                                         <td>
-                                            {% if usuario.groups.all %}
-                                                {% for grupo in usuario.groups.all %}
-                                                    <span class="badge text-bg-light border">{{ grupo.name }}</span>
-                                                {% empty %}
-                                                    <span class="badge text-bg-light border">Sin grupo</span>
-                                                {% endfor %}
-                                            {% endif %}
+                                            {% for grupo in usuario.groups.all %}
+                                                <span class="badge text-bg-light border">{{ grupo.name }}</span>
+                                            {% empty %}
+                                                <span class="badge text-bg-light border">Sin grupo</span>
+                                            {% endfor %}
                                         </td>
                                         <td>
                                             {% if usuario.is_active %}
@@ -173,7 +171,7 @@
                                                 {% csrf_token %}
                                                 <input type="hidden" name="accion" value="reset_password">
                                                 <input type="hidden" name="usuario_id" value="{{ usuario.id }}">
-                                                <button type="submit" class="btn btn-outline-primary btn-sm fw-semibold">Nueva contrasena</button>
+                                                <button type="submit" class="btn btn-outline-primary btn-sm fw-semibold">Nueva contraseña</button>
                                             </form>
                                         </td>
                                     </tr>
@@ -183,7 +181,7 @@
                         </div>
 
                         <div class="small text-muted mt-3">
-                            Las contrasenas existentes no se pueden leer desde Django. Si no recuerdas una, usa "Nueva contrasena" para generar una temporal.
+                            Las contraseñas existentes no se pueden leer desde Django. Si no recuerdas una, usa "Nueva contraseña" para generar una temporal.
                         </div>
                     </div>
                 </div>
