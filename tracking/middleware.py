@@ -14,6 +14,18 @@ class SecurityHeadersMiddleware:
         response = self.get_response(request)
 
         response.setdefault(
+            "X-Frame-Options",
+            settings.X_FRAME_OPTIONS,
+        )
+        response.setdefault(
+            "X-Content-Type-Options",
+            "nosniff",
+        )
+        response.setdefault(
+            "Referrer-Policy",
+            settings.SECURE_REFERRER_POLICY,
+        )
+        response.setdefault(
             "Content-Security-Policy",
             settings.CONTENT_SECURITY_POLICY,
         )

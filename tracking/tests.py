@@ -1,7 +1,7 @@
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -279,6 +279,20 @@ class TrackingFlowTests(TestCase):
             response["X-Content-Type-Options"],
             "nosniff",
         )
+
+    @override_settings(
+        SECURE_SSL_REDIRECT=True,
+        SESSION_COOKIE_SECURE=True,
+        CSRF_COOKIE_SECURE=True,
+    )
+    def test_redireccion_http_a_https_conserva_cabeceras_de_seguridad(self):
+        response = self.client.get(reverse("login"), secure=False)
+        self.assertEqual(response.status_code, 301)
+        self.assertTrue(response["Location"].startswith("https://"))
+        self.assertIn("Content-Security-Policy", response)
+        self.assertIn("Permissions-Policy", response)
+        self.assertEqual(response["X-Frame-Options"], "DENY")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
 
 
 class DatosFicticiosCommandTests(TestCase):
