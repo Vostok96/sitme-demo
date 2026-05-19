@@ -274,7 +274,7 @@ class TrackingFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("Content-Security-Policy", response)
         self.assertIn("Permissions-Policy", response)
-        self.assertIn("https://cdn.jsdelivr.net", response["Content-Security-Policy"])
+        self.assertNotIn("cdn.jsdelivr.net", response["Content-Security-Policy"])
         self.assertEqual(response["X-Frame-Options"], "DENY")
         self.assertEqual(
             response["X-Content-Type-Options"],
