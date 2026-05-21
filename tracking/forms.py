@@ -78,6 +78,24 @@ class SubirResultadoForm(forms.ModelForm):
         }
 
 
+class EliminarOrdenForm(forms.Form):
+    motivo = forms.CharField(
+        max_length=300,
+        min_length=4,
+        widget=forms.HiddenInput(),
+        error_messages={
+            "required": "Debes indicar el motivo de eliminación.",
+            "min_length": "El motivo de eliminación es demasiado corto.",
+        },
+    )
+
+    def clean_motivo(self):
+        motivo = self.cleaned_data["motivo"].strip()
+        if not motivo:
+            raise ValidationError("Debes indicar el motivo de eliminación.")
+        return motivo
+
+
 class CrearUsuarioSITMEForm(forms.ModelForm):
     rol = forms.ChoiceField(
         choices=ROL_CHOICES,

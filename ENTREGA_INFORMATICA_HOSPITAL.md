@@ -64,6 +64,8 @@ Como mínimo deben definir:
 4. `DJANGO_ALLOWED_HOSTS`
 5. `DJANGO_CSRF_TRUSTED_ORIGINS`
 6. `DJANGO_TIME_ZONE=America/Lima`
+7. `SITME_LOGIN_MAX_FAILED_ATTEMPTS=5`
+8. `SITME_LOGIN_LOCK_MINUTES=15`
 
 ## Pasos de despliegue sugeridos
 
@@ -80,6 +82,42 @@ docker compose exec sitme_web python manage.py collectstatic --noinput
 4. Verificar acceso web y login.
 5. Crear o migrar usuarios.
 6. Restaurar `db.sqlite3` y `media/` solo si se trasladará la información existente.
+
+## Seguridad funcional implementada
+
+La versión entregada incluye controles defensivos básicos para operar en un entorno institucional:
+
+1. Autenticación obligatoria para el tablero, reportes, carga y descarga de PDF.
+2. Roles separados para Laboratorio, Epidemiología y Médico/Servicio.
+3. Bloqueo persistente de login por combinación usuario/IP después de intentos fallidos repetidos.
+4. Cabeceras de seguridad HTTP: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy y Permissions-Policy.
+5. Cookies seguras cuando `DJANGO_ENABLE_HTTPS_SECURITY=True`.
+6. Descarga de PDF por vista autenticada, no por enlace público directo a `/media/`.
+7. Eliminación lógica de solicitudes: las órdenes retiradas dejan de verse en el tablero, pero conservan auditoría de usuario, fecha, hora y motivo.
+
+## Usuarios iniciales y administración de cuentas
+
+SITME incluye un panel interno en la opción `Usuarios`, disponible para cuentas de Laboratorio o administradores. Desde ese panel se pueden crear nuevos usuarios, asignar rol y generar una contraseña temporal.
+
+Usuarios funcionales iniciales sugeridos:
+
+| Usuario | Rol |
+|---|---|
+| dgallardo | Laboratorio |
+| kpena | Laboratorio |
+| hcontreras | Laboratorio |
+| epidemiologia | Epidemiología |
+| pediatria | Médico/Servicio |
+| ucin | Médico/Servicio |
+| intermedios_i | Médico/Servicio |
+| intermedios_ii | Médico/Servicio |
+| metaxenicas | Médico/Servicio |
+| traumashock | Médico/Servicio |
+| consultorio_externo | Médico/Servicio |
+| hospitalizacion | Médico/Servicio |
+| emergencia | Médico/Servicio |
+
+Por seguridad, las contraseñas temporales no deben publicarse en el repositorio ni en documentos técnicos compartidos. Si se entregan credenciales iniciales, deben ir en una hoja reservada, con indicación de cambio o reseteo en el primer uso operativo.
 
 ## Recomendaciones de mejora para la instalación institucional
 

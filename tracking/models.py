@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils import timezone
 
 
 class CatalogoExamen(models.Model):
@@ -56,6 +57,21 @@ class OrdenExamen(models.Model):
     fecha_envio = models.DateTimeField(blank=True, null=True, verbose_name="Fecha y Hora de Envio")
     fecha_resultado = models.DateTimeField(blank=True, null=True, verbose_name="Fecha y Hora de Resultado")
     notas = models.TextField(blank=True, null=True, verbose_name="Observaciones / Justificacion")
+    eliminado = models.BooleanField(default=False, verbose_name="Eliminado del tablero")
+    fecha_eliminacion = models.DateTimeField(
+        blank=True,
+        null=True,
+        verbose_name="Fecha y Hora de Eliminacion",
+    )
+    usuario_eliminacion = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ordenes_eliminadas',
+        verbose_name="Usuario que Elimino",
+    )
+    motivo_eliminacion = models.TextField(blank=True, verbose_name="Motivo de Eliminacion")
     laboratorista_toma = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -93,6 +109,8 @@ class EventoOrden(models.Model):
         ('EDICION', 'Edicion'),
         ('CAMBIO_ESTADO', 'Cambio de Estado'),
         ('PDF', 'Resultado PDF'),
+        ('DESCARGA_PDF', 'Descarga de PDF'),
+        ('ELIMINACION', 'Eliminacion'),
     ]
 
     orden = models.ForeignKey(OrdenExamen, on_delete=models.CASCADE, related_name='eventos')
@@ -116,3 +134,25 @@ class EventoOrden(models.Model):
         verbose_name = "Evento de Orden"
         verbose_name_plural = "Eventos de Orden"
         ordering = ['-fecha_evento', '-id']
+
+
+class IntentoLogin(models.Model):
+    identificador = models.CharField(max_length=255, unique=True)
+    username = models.CharField(max_length=150, blank=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    intentos_fallidos = models.PositiveIntegerField(default=0)
+    bloqueado_hasta = models.DateTimeField(blank=True, null=True)
+    ultimo_intento = models.DateTimeField(auto_now=True)
+    creado = models.DateTimeField(auto_now_add=True)
+
+    def esta_bloqueado(self):
+        return bool(self.bloqueado_hasta and self.bloqueado_hasta > timezone.now())
+
+    class Meta:
+        verbose_name = "Intento de Login"
+        verbose_name_plural = "Intentos de Login"
+        ordering = ['-ultimo_intento']
+        indexes = [
+            models.Index(fields=['username', 'ip_address']),
+            models.Index(fields=['bloqueado_hasta']),
+        ]

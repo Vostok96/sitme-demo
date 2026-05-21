@@ -532,6 +532,14 @@
                                             </li>
                                             <li><hr class="dropdown-divider"></li>
                                             <li><a class="dropdown-item small fw-bold text-success" href="{% url 'subir_resultado' orden.id %}">Subir o actualizar PDF</a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <form method="post" action="{% url 'eliminar_orden' orden.id %}" class="eliminar-orden-form" data-paciente="{{ orden.paciente_nombre }}">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="motivo" value="">
+                                                    <button type="submit" class="dropdown-item small fw-bold text-danger">Eliminar con auditoría</button>
+                                                </form>
+                                            </li>
                                         </ul>
                                     </div>
                                     {% endif %}
@@ -700,6 +708,14 @@
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item small fw-bold text-success" href="{% url 'subir_resultado' orden.id %}">Subir o actualizar PDF</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{% url 'eliminar_orden' orden.id %}" class="eliminar-orden-form" data-paciente="{{ orden.paciente_nombre }}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="motivo" value="">
+                                    <button type="submit" class="dropdown-item small fw-bold text-danger">Eliminar con auditoría</button>
+                                </form>
+                            </li>
                         </ul>
                     </div>
                     {% endif %}
@@ -802,6 +818,24 @@
             }
         }
         {% endif %}
+
+        document.querySelectorAll('.eliminar-orden-form').forEach(function(form) {
+            form.addEventListener('submit', function(event) {
+                const paciente = form.dataset.paciente || 'esta solicitud';
+                const motivo = window.prompt(
+                    'Indica el motivo para retirar del tablero a "' + paciente + '". ' +
+                    'La orden no se borrará físicamente; quedará registrada en auditoría.'
+                );
+
+                if (!motivo || motivo.trim().length < 4) {
+                    event.preventDefault();
+                    window.alert('Para eliminar una solicitud debes escribir un motivo válido.');
+                    return;
+                }
+
+                form.querySelector('input[name="motivo"]').value = motivo.trim();
+            });
+        });
     });
 </script>
 </body>

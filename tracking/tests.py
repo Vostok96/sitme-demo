@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .forms import OrdenExamenForm, SubirResultadoForm
-from .models import CatalogoExamen, EventoOrden, OrdenExamen
+from .models import CatalogoExamen, EventoOrden, IntentoLogin, OrdenExamen
 from .permissions import GRUPO_EPIDEMIOLOGIA, GRUPO_LABORATORIO, GRUPO_MEDICO
 
 
@@ -68,6 +68,40 @@ class TrackingFlowTests(TestCase):
         response = self.client.get(reverse("login"))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Ingresar al sistema")
+
+    def test_login_bloquea_intentos_repetidos_por_fuerza_bruta(self):
+        for _ in range(5):
+            response = self.client.post(
+                reverse("login"),
+                {"username": "laboratorio", "password": "clave-incorrecta"},
+            )
+            self.assertEqual(response.status_code, 200)
+
+        intento = IntentoLogin.objects.get(username="laboratorio")
+        self.assertTrue(intento.esta_bloqueado())
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": "laboratorio", "password": "demo12345"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Demasiados intentos fallidos")
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_login_correcto_limpia_intentos_fallidos_previos(self):
+        IntentoLogin.objects.create(
+            identificador="laboratorio|127.0.0.1",
+            username="laboratorio",
+            ip_address="127.0.0.1",
+            intentos_fallidos=2,
+        )
+
+        response = self.client.post(
+            reverse("login"),
+            {"username": "laboratorio", "password": "demo12345"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(IntentoLogin.objects.filter(username="laboratorio").exists())
 
     def test_form_solo_muestra_examenes_activos(self):
         form = OrdenExamenForm()
@@ -198,6 +232,48 @@ class TrackingFlowTests(TestCase):
         response_creacion = self.client.get(reverse("crear_orden"))
         self.assertEqual(response_creacion.status_code, 302)
         self.assertEqual(OrdenExamen.objects.count(), total_inicial)
+
+    def test_laboratorio_elimina_solicitud_con_auditoria_sin_borrarla(self):
+        self.client.login(username="laboratorio", password="demo12345")
+        response = self.client.post(
+            reverse("eliminar_orden", args=[self.orden.id]),
+            {"motivo": "Registro duplicado por error de digitación."},
+        )
+        self.assertEqual(response.status_code, 302)
+
+        self.orden.refresh_from_db()
+        self.assertTrue(self.orden.eliminado)
+        self.assertEqual(self.orden.usuario_eliminacion, self.staff)
+        self.assertEqual(
+            self.orden.motivo_eliminacion,
+            "Registro duplicado por error de digitación.",
+        )
+        self.assertTrue(
+            EventoOrden.objects.filter(
+                orden=self.orden,
+                tipo_evento="ELIMINACION",
+                usuario=self.staff,
+            ).exists()
+        )
+
+        dashboard = self.client.get(reverse("dashboard"))
+        self.assertEqual(dashboard.status_code, 200)
+        self.assertNotContains(dashboard, "Paciente Demo")
+
+        reportes = self.client.get(reverse("estadisticas"))
+        self.assertEqual(reportes.status_code, 200)
+        self.assertContains(reportes, "Auditoría de solicitudes retiradas")
+        self.assertContains(reportes, "Paciente Demo")
+
+    def test_epidemiologia_no_puede_eliminar_solicitudes(self):
+        self.client.login(username="epi", password="demo12345")
+        response = self.client.post(
+            reverse("eliminar_orden", args=[self.orden.id]),
+            {"motivo": "Intento no autorizado"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.orden.refresh_from_db()
+        self.assertFalse(self.orden.eliminado)
 
     def test_laboratorio_puede_crear_usuario_desde_panel(self):
         self.client.login(username="laboratorio", password="demo12345")

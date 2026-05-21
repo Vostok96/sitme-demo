@@ -1,10 +1,13 @@
 import os
 import secrets
 import unicodedata
+from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.contrib.auth.views import LoginView
 from django.db.models import Count, Prefetch
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -13,11 +16,12 @@ from django.views.decorators.http import require_POST
 
 from .forms import (
     CrearUsuarioSITMEForm,
+    EliminarOrdenForm,
     OrdenExamenForm,
     ResetPasswordUsuarioForm,
     SubirResultadoForm,
 )
-from .models import EventoOrden, OrdenExamen
+from .models import EventoOrden, IntentoLogin, OrdenExamen
 from .permissions import (
     obtener_contexto_roles,
     puede_administrar_usuarios,
@@ -28,6 +32,82 @@ from .permissions import (
 
 
 ESTADOS_VALIDOS = {estado for estado, _ in OrdenExamen.ESTADO_CHOICES}
+LOGIN_MAX_FAILED_ATTEMPTS = getattr(settings, "SITME_LOGIN_MAX_FAILED_ATTEMPTS", 5)
+LOGIN_LOCK_MINUTES = getattr(settings, "SITME_LOGIN_LOCK_MINUTES", 15)
+
+
+def obtener_ip_cliente(request):
+    cf_ip = request.META.get("HTTP_CF_CONNECTING_IP")
+    if cf_ip:
+        return cf_ip.strip()
+
+    forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+
+    return request.META.get("REMOTE_ADDR") or "0.0.0.0"
+
+
+def construir_identificador_login(request):
+    username = (request.POST.get("username") or "").strip().casefold()
+    ip_address = obtener_ip_cliente(request)
+    return username, ip_address, f"{username or 'anonimo'}|{ip_address}"
+
+
+class SITMELoginView(LoginView):
+    template_name = "tracking/login.html"
+
+    def post(self, request, *args, **kwargs):
+        username, ip_address, identificador = construir_identificador_login(request)
+        intento = IntentoLogin.objects.filter(identificador=identificador).first()
+
+        if intento and intento.esta_bloqueado():
+            form = self.get_form()
+            form.add_error(
+                None,
+                "Demasiados intentos fallidos. Por seguridad, este acceso quedó "
+                f"bloqueado hasta las {timezone.localtime(intento.bloqueado_hasta):%H:%M}.",
+            )
+            return super().form_invalid(form)
+
+        return super().post(request, *args, **kwargs)
+
+    def form_invalid(self, form):
+        username, ip_address, identificador = construir_identificador_login(self.request)
+        intento, _ = IntentoLogin.objects.get_or_create(
+            identificador=identificador,
+            defaults={
+                "username": username,
+                "ip_address": ip_address,
+            },
+        )
+
+        intento.username = username
+        intento.ip_address = ip_address
+        intento.intentos_fallidos += 1
+
+        if intento.intentos_fallidos >= LOGIN_MAX_FAILED_ATTEMPTS:
+            intento.bloqueado_hasta = timezone.now() + timedelta(minutes=LOGIN_LOCK_MINUTES)
+            form.add_error(
+                None,
+                "Se detectaron varios intentos fallidos. La cuenta quedó protegida "
+                f"durante {LOGIN_LOCK_MINUTES} minutos para frenar ataques por fuerza bruta.",
+            )
+        else:
+            restantes = LOGIN_MAX_FAILED_ATTEMPTS - intento.intentos_fallidos
+            form.add_error(
+                None,
+                f"Usuario o contraseña incorrectos. Intentos restantes antes del bloqueo: {restantes}.",
+            )
+
+        intento.save()
+        return super().form_invalid(form)
+
+    def form_valid(self, form):
+        username, ip_address, identificador = construir_identificador_login(self.request)
+        IntentoLogin.objects.filter(identificador=identificador).delete()
+        IntentoLogin.objects.filter(username=username, ip_address=ip_address).delete()
+        return super().form_valid(form)
 
 
 def generar_password_temporal(longitud=12):
@@ -150,6 +230,7 @@ def dashboard(request):
             "laboratorista_resultado",
         )
         .prefetch_related(Prefetch("eventos", queryset=eventos_queryset))
+        .filter(eliminado=False)
         .order_by("-fecha_solicitud", "-id")
     )
 
@@ -218,7 +299,7 @@ def cambiar_estado(request, orden_id):
         messages.error(request, "El estado solicitado no es válido.")
         return redirect("dashboard")
 
-    orden = get_object_or_404(OrdenExamen, id=orden_id)
+    orden = get_object_or_404(OrdenExamen, id=orden_id, eliminado=False)
     estado_anterior = registrar_cambio_estado(orden, nuevo_estado, request.user)
     orden.save()
     registrar_evento(
@@ -242,7 +323,7 @@ def subir_resultado(request, orden_id):
         )
         return redirect("dashboard")
 
-    orden = get_object_or_404(OrdenExamen, id=orden_id)
+    orden = get_object_or_404(OrdenExamen, id=orden_id, eliminado=False)
 
     if request.method == "POST":
         ya_tenia_pdf = bool(orden.archivo_resultado)
@@ -284,7 +365,7 @@ def subir_resultado(request, orden_id):
 
 @login_required(login_url="login")
 def descargar_resultado(request, orden_id):
-    orden = get_object_or_404(OrdenExamen, id=orden_id)
+    orden = get_object_or_404(OrdenExamen, id=orden_id, eliminado=False)
 
     if not orden.archivo_resultado:
         messages.error(request, "La orden seleccionada aún no tiene un PDF cargado.")
@@ -323,7 +404,7 @@ def editar_orden(request, orden_id):
         )
         return redirect("dashboard")
 
-    orden = get_object_or_404(OrdenExamen, id=orden_id)
+    orden = get_object_or_404(OrdenExamen, id=orden_id, eliminado=False)
 
     if request.method == "POST":
         form = OrdenExamenForm(request.POST, instance=orden)
@@ -357,6 +438,55 @@ def editar_orden(request, orden_id):
 
 
 @login_required(login_url="login")
+@require_POST
+def eliminar_orden(request, orden_id):
+    if not puede_gestionar_ordenes(request.user):
+        messages.error(
+            request,
+            "Tu usuario no tiene permisos para eliminar solicitudes.",
+        )
+        return redirect("dashboard")
+
+    orden = get_object_or_404(OrdenExamen, id=orden_id, eliminado=False)
+    form = EliminarOrdenForm(request.POST)
+
+    if not form.is_valid():
+        messages.error(
+            request,
+            "No se eliminó la solicitud porque falta registrar un motivo válido.",
+        )
+        return redirect("dashboard")
+
+    motivo = form.cleaned_data["motivo"]
+    ahora = timezone.now()
+    orden.eliminado = True
+    orden.fecha_eliminacion = ahora
+    orden.usuario_eliminacion = request.user
+    orden.motivo_eliminacion = motivo
+    orden.save(
+        update_fields=[
+            "eliminado",
+            "fecha_eliminacion",
+            "usuario_eliminacion",
+            "motivo_eliminacion",
+        ]
+    )
+
+    registrar_evento(
+        orden,
+        "ELIMINACION",
+        f"Solicitud retirada del tablero. Motivo: {motivo}",
+        usuario=request.user,
+        estado_nuevo=orden.estado,
+    )
+    messages.success(
+        request,
+        "La solicitud fue retirada del tablero y quedó registrada en auditoría.",
+    )
+    return redirect("dashboard")
+
+
+@login_required(login_url="login")
 def estadisticas(request):
     if not puede_ver_reportes(request.user):
         messages.error(request, "Tu usuario no tiene permisos para ver reportes.")
@@ -369,8 +499,22 @@ def estadisticas(request):
     fecha_fin = request.GET.get("fin", hoy.strftime("%Y-%m-%d"))
 
     ordenes = OrdenExamen.objects.select_related("tipo_examen").filter(
+        eliminado=False,
         fecha_solicitud__date__gte=fecha_inicio,
         fecha_solicitud__date__lte=fecha_fin,
+    )
+    ordenes_eliminadas = (
+        OrdenExamen.objects.select_related(
+            "tipo_examen",
+            "usuario_eliminacion",
+            "medico_solicitante",
+        )
+        .filter(
+            eliminado=True,
+            fecha_eliminacion__date__gte=fecha_inicio,
+            fecha_eliminacion__date__lte=fecha_fin,
+        )
+        .order_by("-fecha_eliminacion", "-id")
     )
 
     conteo_examenes = (
@@ -383,6 +527,7 @@ def estadisticas(request):
         "total_general": total_general,
         "fecha_inicio": fecha_inicio,
         "fecha_fin": fecha_fin,
+        "ordenes_eliminadas": ordenes_eliminadas,
     }
     context.update(construir_contexto_base(request.user))
     return render(request, "tracking/estadisticas.html", context)

@@ -9,7 +9,7 @@ urlpatterns = [
     path("nueva-solicitud/", views.crear_orden, name="crear_orden"),
     path(
         "login/",
-        auth_views.LoginView.as_view(template_name="tracking/login.html"),
+        views.SITMELoginView.as_view(),
         name="login",
     ),
     path("logout/", auth_views.LogoutView.as_view(next_page="dashboard"), name="logout"),
@@ -21,6 +21,7 @@ urlpatterns = [
         name="descargar_resultado",
     ),
     path("editar-solicitud/<int:orden_id>/", views.editar_orden, name="editar_orden"),
+    path("eliminar-solicitud/<int:orden_id>/", views.eliminar_orden, name="eliminar_orden"),
     path("estadisticas/", views.estadisticas, name="estadisticas"),
     path("usuarios/", views.gestionar_usuarios, name="gestionar_usuarios"),
 ]
