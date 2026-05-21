@@ -275,6 +275,16 @@ class TrackingFlowTests(TestCase):
         self.orden.refresh_from_db()
         self.assertFalse(self.orden.eliminado)
 
+    def test_medico_no_puede_eliminar_solicitudes(self):
+        self.client.login(username="medicina", password="demo12345")
+        response = self.client.post(
+            reverse("eliminar_orden", args=[self.orden.id]),
+            {"motivo": "No debería poder borrar"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.orden.refresh_from_db()
+        self.assertFalse(self.orden.eliminado)
+
     def test_laboratorio_puede_crear_usuario_desde_panel(self):
         self.client.login(username="laboratorio", password="demo12345")
         response = self.client.post(

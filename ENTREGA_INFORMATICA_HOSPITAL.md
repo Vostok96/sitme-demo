@@ -119,6 +119,45 @@ Usuarios funcionales iniciales sugeridos:
 
 Por seguridad, las contraseñas temporales no deben publicarse en el repositorio ni en documentos técnicos compartidos. Si se entregan credenciales iniciales, deben ir en una hoja reservada, con indicación de cambio o reseteo en el primer uso operativo.
 
+## Flujo de usuarios y permisos operativos
+
+Distribución funcional actual:
+
+1. Grupo `Laboratorio`
+   Lo integran `dgallardo`, `hcontreras` y `kpena`.
+   Estas cuentas pueden:
+   - ver todo el tablero
+   - crear solicitudes si se requiere apoyo operativo
+   - editar datos de la solicitud
+   - cambiar estados
+   - subir o actualizar PDF
+   - descargar resultados
+   - eliminar solicitudes con auditoría
+   - administrar usuarios desde el panel `Usuarios`
+
+2. Grupo `Médico/Servicio`
+   Incluye cuentas como `pediatria`, `ucin`, `intermedios_i`, `intermedios_ii`, `metaxenicas`, `traumashock`, `consultorio_externo`, `hospitalizacion` y `emergencia`.
+   Estas cuentas pueden:
+   - registrar nuevas solicitudes
+   - ver el estado de sus solicitudes y del tablero
+   - descargar resultados PDF
+   No pueden:
+   - eliminar solicitudes
+   - cambiar estados de laboratorio
+   - administrar usuarios
+
+3. Grupo `Epidemiología`
+   La cuenta `epidemiologia` funciona como perfil observador.
+   Puede:
+   - visualizar el tablero
+   - consultar reportes
+   - descargar resultados PDF
+   No puede:
+   - registrar solicitudes
+   - editar estados
+   - eliminar solicitudes
+   - administrar usuarios
+
 ## Recomendaciones de mejora para la instalación institucional
 
 Si Informática lo considera pertinente, a mediano plazo conviene:
