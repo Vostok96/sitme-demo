@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.contrib.auth.models import Group, User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.management import call_command
@@ -8,6 +10,7 @@ from django.utils import timezone
 from .forms import OrdenExamenForm, SubirResultadoForm
 from .models import AuditoriaUsuario, CatalogoExamen, EventoOrden, IntentoLogin, OrdenExamen
 from .permissions import GRUPO_EPIDEMIOLOGIA, GRUPO_LABORATORIO, GRUPO_MEDICO
+from .views import construir_historial_orden
 
 
 class TrackingFlowTests(TestCase):
@@ -339,6 +342,34 @@ class TrackingFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Paciente Demo")
         self.assertNotContains(response, "Richard Enríquez Quiroz")
+        self.assertContains(response, "solo las solicitudes registradas por usted")
+
+    def test_dashboard_muestra_nombre_de_sesion_para_laboratorio(self):
+        self.staff.first_name = "Hans"
+        self.staff.last_name = "Contreras"
+        self.staff.save(update_fields=["first_name", "last_name"])
+
+        self.client.login(username="laboratorio", password="demo12345")
+        response = self.client.get(reverse("dashboard"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Biólogo en sesión")
+        self.assertContains(response, "Hans Contreras")
+
+    def test_historial_sintetiza_hitos_clinicos_faltantes(self):
+        orden = OrdenExamen.objects.create(
+            paciente_nombre="Paciente Sin Eventos",
+            cama="UCIN 1",
+            tipo_examen=self.examen_activo,
+            medico_solicitante=self.medico,
+        )
+        orden.fecha_toma = timezone.now()
+        orden.laboratorista_toma = self.staff
+        orden.save(update_fields=["fecha_toma", "laboratorista_toma"])
+
+        historial = construir_historial_orden(orden)
+        titulos = [item["titulo"] for item in historial]
+        self.assertIn("Solicitud registrada", titulos)
+        self.assertIn("Muestra tomada", titulos)
 
     def test_dashboard_busca_por_nombre_visible_del_medico(self):
         self.client.login(username="laboratorio", password="demo12345")
@@ -389,6 +420,31 @@ class TrackingFlowTests(TestCase):
             response["X-Content-Type-Options"],
             "nosniff",
         )
+
+    def test_estadisticas_muestran_todo_el_catalogo_y_filtran_por_fecha(self):
+        examen_secundario = CatalogoExamen.objects.create(
+            nombre="VIH", activo=True
+        )
+        orden_antigua = OrdenExamen.objects.create(
+            paciente_nombre="Paciente Antiguo",
+            cama="Archivo",
+            tipo_examen=examen_secundario,
+            medico_solicitante=self.medico,
+        )
+        orden_antigua.fecha_solicitud = timezone.now() - timedelta(days=45)
+        orden_antigua.save(update_fields=["fecha_solicitud"])
+
+        self.client.login(username="epi", password="demo12345")
+        hoy = timezone.localdate().isoformat()
+        response = self.client.get(reverse("estadisticas"), {"inicio": hoy, "fin": hoy})
+        self.assertEqual(response.status_code, 200)
+
+        conteos = {
+            item.nombre: item.total for item in response.context["conteo_examenes"]
+        }
+        self.assertEqual(conteos["PCR Dengue"], 2)
+        self.assertEqual(conteos["VIH"], 0)
+        self.assertEqual(response.context["total_general"], 2)
 
     @override_settings(
         SECURE_SSL_REDIRECT=True,

@@ -83,12 +83,77 @@
             gap: 0.5rem;
         }
 
+        .session-pill {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.1rem;
+            min-width: 220px;
+            padding: 0.45rem 0.75rem;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.16);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .session-pill small {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.8;
+        }
+
+        .session-pill strong {
+            font-size: 0.92rem;
+            line-height: 1.2;
+        }
+
         .filters-row {
             display: flex;
             flex-wrap: wrap;
             justify-content: space-between;
             align-items: center;
             gap: 1rem;
+        }
+
+        .scope-strip {
+            margin: 1rem 1rem 0;
+            padding: 0.9rem 1rem;
+            border-radius: 14px;
+            background: rgba(248, 249, 250, 0.9);
+            border: 1px solid rgba(13, 110, 253, 0.08);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .scope-copy {
+            max-width: 680px;
+        }
+
+        .scope-copy-title {
+            display: block;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #6c757d;
+            font-weight: 700;
+            margin-bottom: 0.2rem;
+        }
+
+        .scope-copy-text {
+            margin: 0;
+            color: #495057;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .scope-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
         }
 
         .filters-inline {
@@ -330,6 +395,16 @@
                 white-space: nowrap;
             }
 
+            .scope-strip {
+                margin: 1rem 0.75rem 0;
+                padding: 0.85rem;
+            }
+
+            .session-pill {
+                width: 100%;
+                min-width: 0;
+            }
+
             .table-wrapper {
                 display: none;
             }
@@ -397,6 +472,10 @@
             <div class="top-actions">
                 {% if user.is_authenticated %}
                     <span class="badge badge-rol px-2 py-1 shadow-sm">{{ rol_usuario }}</span>
+                    <span class="session-pill shadow-sm">
+                        <small>{{ etiqueta_usuario_sesion }}</small>
+                        <strong>{{ nombre_usuario_sesion }}</strong>
+                    </span>
 
                     {% if puede_ver_reportes %}
                         <a href="{% url 'estadisticas' %}" class="btn btn-warning btn-sm shadow-sm fw-bold border-0 text-dark">Reportes</a>
@@ -419,6 +498,19 @@
             </div>
         </div>
 
+        {% if mostrar_filtro_mis_solicitudes %}
+        <div class="scope-strip">
+            <div class="scope-copy">
+                <span class="scope-copy-title">Vista activa del tablero</span>
+                <p class="scope-copy-text">{{ descripcion_alcance }}</p>
+            </div>
+            <div class="scope-actions">
+                <a href="{{ filtro_urls.alcance_todas }}" class="btn btn-sm {% if alcance_actual != 'mis' %}btn-primary{% else %}btn-outline-primary{% endif %} fw-semibold">Tablero general</a>
+                <a href="{{ filtro_urls.alcance_mis }}" class="btn btn-sm {% if alcance_actual == 'mis' %}btn-primary{% else %}btn-outline-primary{% endif %} fw-semibold">Mis solicitudes</a>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="p-3 filters-row">
             <div class="filters-inline">
                 <span class="fw-bold text-secondary me-2" style="font-size: 0.85rem;"><small>FILTRAR:</small></span>
@@ -427,10 +519,6 @@
                 <a href="{{ filtro_urls.tomado }}" class="btn btn-sm {% if estado_actual == 'TOMADO' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %} fw-semibold">Tomadas</a>
                 <a href="{{ filtro_urls.enviado }}" class="btn btn-sm {% if estado_actual == 'ENVIADO' %}btn-info text-dark{% else %}btn-outline-info text-dark{% endif %} fw-semibold">Enviadas</a>
                 <a href="{{ filtro_urls.resultado }}" class="btn btn-sm {% if estado_actual == 'RESULTADO' %}btn-success{% else %}btn-outline-success{% endif %} fw-semibold">Resultados</a>
-                {% if mostrar_filtro_mis_solicitudes %}
-                    <a href="{{ filtro_urls.alcance_todas }}" class="btn btn-sm {% if alcance_actual != 'mis' %}btn-primary{% else %}btn-outline-primary{% endif %} fw-semibold">Tablero general</a>
-                    <a href="{{ filtro_urls.alcance_mis }}" class="btn btn-sm {% if alcance_actual == 'mis' %}btn-primary{% else %}btn-outline-primary{% endif %} fw-semibold">Mis solicitudes</a>
-                {% endif %}
             </div>
 
             <form method="GET" action="{% url 'dashboard' %}" class="d-flex flex-wrap" style="max-width: 360px; width: 100%; gap: 0.5rem;">
@@ -554,18 +642,12 @@
 
                                 <div class="collapse" id="historial-{{ orden.id }}">
                                     <div class="event-timeline">
-                                        {% for evento in orden.eventos.all %}
+                                        {% for evento in orden.historial_items %}
                                         <div class="event-item">
                                             <div class="event-date">{{ evento.fecha_evento|date:"d/m/Y H:i" }}</div>
-                                            <div class="event-title">{{ evento.get_tipo_evento_display }}</div>
+                                            <div class="event-title">{{ evento.titulo }}</div>
                                             <div class="event-detail">{{ evento.descripcion }}</div>
-                                            <div class="event-detail">
-                                                {% if evento.usuario %}
-                                                    Responsable: {{ evento.usuario.get_full_name|default:evento.usuario.username }}
-                                                {% else %}
-                                                    Responsable: Sistema
-                                                {% endif %}
-                                            </div>
+                                            <div class="event-detail">Responsable: {{ evento.responsable }}</div>
                                             {% if evento.estado_anterior or evento.estado_nuevo %}
                                             <div class="event-detail">
                                                 Estado: {{ evento.estado_anterior|default:"-" }} -> {{ evento.estado_nuevo|default:"-" }}
@@ -730,18 +812,17 @@
 
                 <div class="collapse" id="historial-mobile-{{ orden.id }}">
                     <div class="event-timeline">
-                        {% for evento in orden.eventos.all %}
+                        {% for evento in orden.historial_items %}
                         <div class="event-item">
                             <div class="event-date">{{ evento.fecha_evento|date:"d/m/Y H:i" }}</div>
-                            <div class="event-title">{{ evento.get_tipo_evento_display }}</div>
+                            <div class="event-title">{{ evento.titulo }}</div>
                             <div class="event-detail">{{ evento.descripcion }}</div>
+                            <div class="event-detail">Responsable: {{ evento.responsable }}</div>
+                            {% if evento.estado_anterior or evento.estado_nuevo %}
                             <div class="event-detail">
-                                {% if evento.usuario %}
-                                    Responsable: {{ evento.usuario.get_full_name|default:evento.usuario.username }}
-                                {% else %}
-                                    Responsable: Sistema
-                                {% endif %}
+                                Estado: {{ evento.estado_anterior|default:"-" }} -> {{ evento.estado_nuevo|default:"-" }}
                             </div>
+                            {% endif %}
                         </div>
                         {% empty %}
                         <div class="event-detail">No hay eventos registrados aún para esta muestra.</div>

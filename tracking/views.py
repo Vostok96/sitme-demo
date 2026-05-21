@@ -1,7 +1,7 @@
 import os
 import secrets
 import unicodedata
-from datetime import timedelta
+from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView
-from django.db.models import Count, Prefetch
+from django.db.models import Count, Prefetch, Q
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -23,7 +23,13 @@ from .forms import (
     ResetPasswordUsuarioForm,
     SubirResultadoForm,
 )
-from .models import AuditoriaUsuario, EventoOrden, IntentoLogin, OrdenExamen
+from .models import (
+    AuditoriaUsuario,
+    CatalogoExamen,
+    EventoOrden,
+    IntentoLogin,
+    OrdenExamen,
+)
 from .permissions import (
     GRUPO_EPIDEMIOLOGIA,
     GRUPO_LABORATORIO,
@@ -37,6 +43,7 @@ from .permissions import (
 
 
 ESTADOS_VALIDOS = {estado for estado, _ in OrdenExamen.ESTADO_CHOICES}
+ESTADOS_DISPLAY = dict(OrdenExamen.ESTADO_CHOICES)
 LOGIN_MAX_FAILED_ATTEMPTS = getattr(settings, "SITME_LOGIN_MAX_FAILED_ATTEMPTS", 5)
 LOGIN_LOCK_MINUTES = getattr(settings, "SITME_LOGIN_LOCK_MINUTES", 15)
 
@@ -282,6 +289,146 @@ def registrar_auditoria_usuario(
     )
 
 
+def obtener_nombre_visible_usuario(user):
+    if not user:
+        return "Sistema"
+
+    nombre_completo = user.get_full_name().strip()
+    return nombre_completo or user.username
+
+
+def construir_titulo_evento(evento):
+    if evento.tipo_evento == "CREACION":
+        return "Solicitud registrada"
+
+    if evento.tipo_evento == "EDICION":
+        return "Datos actualizados"
+
+    if evento.tipo_evento == "PDF":
+        return "PDF cargado o actualizado"
+
+    if evento.tipo_evento == "DESCARGA_PDF":
+        return "PDF consultado"
+
+    if evento.tipo_evento == "ELIMINACION":
+        return "Solicitud retirada del tablero"
+
+    if evento.tipo_evento == "CAMBIO_ESTADO":
+        titulos_por_estado = {
+            "SOLICITADO": "Solicitud marcada como pendiente",
+            "TOMADO": "Muestra tomada",
+            "ENVIADO": "Muestra enviada a Lima/DIRESA",
+            "RESULTADO": "Resultado recibido",
+        }
+        return titulos_por_estado.get(evento.estado_nuevo, "Cambio de estado")
+
+    return evento.get_tipo_evento_display()
+
+
+def construir_historial_orden(orden):
+    eventos = list(orden.eventos.all())
+    historial = []
+
+    for evento in eventos:
+        historial.append(
+            {
+                "fecha_evento": evento.fecha_evento,
+                "titulo": construir_titulo_evento(evento),
+                "descripcion": evento.descripcion,
+                "responsable": obtener_nombre_visible_usuario(evento.usuario),
+                "estado_anterior": ESTADOS_DISPLAY.get(
+                    evento.estado_anterior, evento.estado_anterior or ""
+                ),
+                "estado_nuevo": ESTADOS_DISPLAY.get(
+                    evento.estado_nuevo, evento.estado_nuevo or ""
+                ),
+                "es_sintetico": False,
+            }
+        )
+
+    tiene_creacion = any(evento.tipo_evento == "CREACION" for evento in eventos)
+    estados_registrados = {
+        evento.estado_nuevo
+        for evento in eventos
+        if evento.tipo_evento == "CAMBIO_ESTADO" and evento.estado_nuevo
+    }
+    tiene_pdf = any(evento.tipo_evento == "PDF" for evento in eventos)
+
+    if not tiene_creacion and orden.fecha_solicitud:
+        historial.append(
+            {
+                "fecha_evento": orden.fecha_solicitud,
+                "titulo": "Solicitud registrada",
+                "descripcion": "Solicitud incorporada al tablero SITME.",
+                "responsable": obtener_nombre_visible_usuario(orden.medico_solicitante),
+                "estado_anterior": "",
+                "estado_nuevo": ESTADOS_DISPLAY["SOLICITADO"],
+                "es_sintetico": True,
+            }
+        )
+
+    hitos_faltantes = [
+        (
+            "TOMADO",
+            orden.fecha_toma,
+            orden.laboratorista_toma,
+            "Muestra tomada",
+            "La muestra fue tomada y quedó lista para su seguimiento.",
+        ),
+        (
+            "ENVIADO",
+            orden.fecha_envio,
+            orden.laboratorista_envio,
+            "Muestra enviada a Lima/DIRESA",
+            "La muestra fue despachada para procesamiento externo.",
+        ),
+        (
+            "RESULTADO",
+            orden.fecha_resultado,
+            orden.laboratorista_resultado,
+            "Resultado recibido",
+            "El sistema registró la recepción del resultado final.",
+        ),
+    ]
+
+    for estado, fecha_hito, responsable, titulo, descripcion in hitos_faltantes:
+        if fecha_hito and estado not in estados_registrados:
+            historial.append(
+                {
+                    "fecha_evento": fecha_hito,
+                    "titulo": titulo,
+                    "descripcion": descripcion,
+                    "responsable": obtener_nombre_visible_usuario(responsable),
+                    "estado_anterior": "",
+                    "estado_nuevo": ESTADOS_DISPLAY[estado],
+                    "es_sintetico": True,
+                }
+            )
+
+    if orden.archivo_resultado and orden.fecha_resultado and not tiene_pdf:
+        historial.append(
+            {
+                "fecha_evento": orden.fecha_resultado,
+                "titulo": "PDF cargado o actualizado",
+                "descripcion": "El resultado en PDF quedó disponible para consulta y descarga.",
+                "responsable": obtener_nombre_visible_usuario(orden.laboratorista_resultado),
+                "estado_anterior": "",
+                "estado_nuevo": ESTADOS_DISPLAY.get(orden.estado, orden.estado),
+                "es_sintetico": True,
+            }
+        )
+
+    historial.sort(key=lambda item: item["fecha_evento"], reverse=True)
+    return historial
+
+
+def parsear_fecha_reporte(valor, valor_por_defecto):
+    try:
+        return date.fromisoformat(valor)
+    except (TypeError, ValueError):
+        return valor_por_defecto
+
+
 @login_required(login_url="login")
 def dashboard(request):
     query = (request.GET.get("q") or "").strip()
@@ -315,10 +462,21 @@ def dashboard(request):
             if coincide_busqueda(construir_texto_busqueda_orden(orden), query)
         ]
 
+    if not isinstance(ordenes, list):
+        ordenes = list(ordenes)
+
+    for orden in ordenes:
+        orden.historial_items = construir_historial_orden(orden)
+
     context = {
         "ordenes": ordenes,
         "estado_actual": estado_filtro,
         "alcance_actual": alcance_filtro,
+        "descripcion_alcance": (
+            "Está viendo solo las solicitudes registradas por usted."
+            if alcance_filtro == "mis"
+            else "Está viendo las solicitudes activas de todo el hospital."
+        ),
         "mostrar_filtro_mis_solicitudes": puede_crear_ordenes(request.user),
         "filtro_urls": {
             "todas": construir_url_dashboard(
@@ -607,8 +765,11 @@ def estadisticas(request):
     hoy = timezone.localdate()
     inicio_mes = hoy.replace(day=1)
 
-    fecha_inicio = request.GET.get("inicio", inicio_mes.strftime("%Y-%m-%d"))
-    fecha_fin = request.GET.get("fin", hoy.strftime("%Y-%m-%d"))
+    fecha_inicio = parsear_fecha_reporte(request.GET.get("inicio"), inicio_mes)
+    fecha_fin = parsear_fecha_reporte(request.GET.get("fin"), hoy)
+
+    if fecha_inicio > fecha_fin:
+        fecha_inicio, fecha_fin = fecha_fin, fecha_inicio
 
     ordenes = OrdenExamen.objects.select_related("tipo_examen").filter(
         eliminado=False,
@@ -630,15 +791,52 @@ def estadisticas(request):
     )
 
     conteo_examenes = (
-        ordenes.values("tipo_examen__nombre").annotate(total=Count("id")).order_by("-total")
+        CatalogoExamen.objects.annotate(
+            total=Count(
+                "ordenexamen",
+                filter=Q(
+                    ordenexamen__eliminado=False,
+                    ordenexamen__fecha_solicitud__date__gte=fecha_inicio,
+                    ordenexamen__fecha_solicitud__date__lte=fecha_fin,
+                ),
+            )
+        )
+        .order_by("-total", "nombre")
     )
     total_general = ordenes.count()
+    resumen_estados = [
+        {
+            "codigo": "SOLICITADO",
+            "etiqueta": "Pendientes",
+            "total": ordenes.filter(estado="SOLICITADO").count(),
+            "clase": "danger",
+        },
+        {
+            "codigo": "TOMADO",
+            "etiqueta": "Tomadas",
+            "total": ordenes.filter(estado="TOMADO").count(),
+            "clase": "warning",
+        },
+        {
+            "codigo": "ENVIADO",
+            "etiqueta": "Enviadas",
+            "total": ordenes.filter(estado="ENVIADO").count(),
+            "clase": "info",
+        },
+        {
+            "codigo": "RESULTADO",
+            "etiqueta": "Con resultado",
+            "total": ordenes.filter(estado="RESULTADO").count(),
+            "clase": "success",
+        },
+    ]
 
     context = {
         "conteo_examenes": conteo_examenes,
         "total_general": total_general,
-        "fecha_inicio": fecha_inicio,
-        "fecha_fin": fecha_fin,
+        "fecha_inicio": fecha_inicio.isoformat(),
+        "fecha_fin": fecha_fin.isoformat(),
+        "resumen_estados": resumen_estados,
         "ordenes_eliminadas": ordenes_eliminadas,
     }
     context.update(construir_contexto_base(request.user))

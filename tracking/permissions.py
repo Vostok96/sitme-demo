@@ -43,9 +43,15 @@ def puede_administrar_usuarios(user):
 def obtener_contexto_roles(user):
     laboratorio = es_laboratorio(user)
     epidemiologia = es_epidemiologia(user)
+    nombre_usuario_sesion = ""
+    etiqueta_usuario_sesion = "Usuario en sesión"
+
+    if user.is_authenticated:
+        nombre_usuario_sesion = user.get_full_name().strip() or user.username
 
     if laboratorio:
         rol_usuario = "Laboratorio"
+        etiqueta_usuario_sesion = "Biólogo en sesión"
     elif epidemiologia:
         rol_usuario = "Epidemiología"
     else:
@@ -59,4 +65,6 @@ def obtener_contexto_roles(user):
         "puede_crear_ordenes": user.is_authenticated and not epidemiologia,
         "puede_administrar_usuarios": puede_administrar_usuarios(user),
         "rol_usuario": rol_usuario,
+        "nombre_usuario_sesion": nombre_usuario_sesion,
+        "etiqueta_usuario_sesion": etiqueta_usuario_sesion,
     }
