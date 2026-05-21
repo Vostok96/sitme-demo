@@ -136,6 +136,52 @@ class EventoOrden(models.Model):
         ordering = ['-fecha_evento', '-id']
 
 
+class AuditoriaUsuario(models.Model):
+    TIPO_CHOICES = [
+        ('CREACION_USUARIO', 'Creacion de usuario'),
+        ('RESET_PASSWORD', 'Reset de contrasena'),
+    ]
+
+    tipo_evento = models.CharField(
+        max_length=30,
+        choices=TIPO_CHOICES,
+        verbose_name="Tipo de Evento",
+    )
+    descripcion = models.CharField(max_length=255, verbose_name="Descripcion")
+    username_afectado = models.CharField(max_length=150, verbose_name="Usuario Afectado")
+    nombre_visible_afectado = models.CharField(
+        max_length=150,
+        blank=True,
+        verbose_name="Nombre Visible Afectado",
+    )
+    rol_asignado = models.CharField(max_length=50, blank=True, verbose_name="Rol Asignado")
+    usuario_objetivo = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='auditorias_recibidas',
+        verbose_name="Usuario Objetivo",
+    )
+    usuario_responsable = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='auditorias_realizadas',
+        verbose_name="Usuario Responsable",
+    )
+    fecha_evento = models.DateTimeField(auto_now_add=True, verbose_name="Fecha del Evento")
+
+    def __str__(self):
+        return f"{self.username_afectado} - {self.tipo_evento} - {self.fecha_evento:%Y-%m-%d %H:%M}"
+
+    class Meta:
+        verbose_name = "Auditoria de Usuario"
+        verbose_name_plural = "Auditoria de Usuarios"
+        ordering = ['-fecha_evento', '-id']
+
+
 class IntentoLogin(models.Model):
     identificador = models.CharField(max_length=255, unique=True)
     username = models.CharField(max_length=150, blank=True)

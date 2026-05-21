@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .forms import OrdenExamenForm, SubirResultadoForm
-from .models import CatalogoExamen, EventoOrden, IntentoLogin, OrdenExamen
+from .models import AuditoriaUsuario, CatalogoExamen, EventoOrden, IntentoLogin, OrdenExamen
 from .permissions import GRUPO_EPIDEMIOLOGIA, GRUPO_LABORATORIO, GRUPO_MEDICO
 
 
@@ -303,6 +303,14 @@ class TrackingFlowTests(TestCase):
         nuevo_usuario = User.objects.get(username="nuevo_servicio")
         self.assertTrue(nuevo_usuario.check_password("Temporal123@"))
         self.assertTrue(nuevo_usuario.groups.filter(name=GRUPO_MEDICO).exists())
+        self.assertTrue(
+            AuditoriaUsuario.objects.filter(
+                tipo_evento="CREACION_USUARIO",
+                usuario_objetivo=nuevo_usuario,
+                usuario_responsable=self.staff,
+                rol_asignado=GRUPO_MEDICO,
+            ).exists()
+        )
 
     def test_laboratorio_puede_resetear_password_desde_panel(self):
         self.client.login(username="laboratorio", password="demo12345")
@@ -316,6 +324,21 @@ class TrackingFlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.medico.refresh_from_db()
         self.assertContains(response, "Contraseña temporal generada")
+        self.assertTrue(
+            AuditoriaUsuario.objects.filter(
+                tipo_evento="RESET_PASSWORD",
+                usuario_objetivo=self.medico,
+                usuario_responsable=self.staff,
+                rol_asignado=GRUPO_MEDICO,
+            ).exists()
+        )
+
+    def test_dashboard_filtra_mis_solicitudes_para_medico(self):
+        self.client.login(username="medicina", password="demo12345")
+        response = self.client.get(reverse("dashboard"), {"alcance": "mis"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Paciente Demo")
+        self.assertNotContains(response, "Richard Enríquez Quiroz")
 
     def test_dashboard_busca_por_nombre_visible_del_medico(self):
         self.client.login(username="laboratorio", password="demo12345")

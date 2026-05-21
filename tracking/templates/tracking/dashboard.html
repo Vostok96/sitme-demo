@@ -422,19 +422,26 @@
         <div class="p-3 filters-row">
             <div class="filters-inline">
                 <span class="fw-bold text-secondary me-2" style="font-size: 0.85rem;"><small>FILTRAR:</small></span>
-                <a href="{% url 'dashboard' %}" class="btn btn-sm {% if not estado_actual or estado_actual == 'TODAS' %}btn-dark{% else %}btn-outline-dark{% endif %} fw-semibold">Todas</a>
-                <a href="?estado=SOLICITADO" class="btn btn-sm {% if estado_actual == 'SOLICITADO' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-semibold">Pendientes</a>
-                <a href="?estado=TOMADO" class="btn btn-sm {% if estado_actual == 'TOMADO' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %} fw-semibold">Tomadas</a>
-                <a href="?estado=ENVIADO" class="btn btn-sm {% if estado_actual == 'ENVIADO' %}btn-info text-dark{% else %}btn-outline-info text-dark{% endif %} fw-semibold">Enviadas</a>
-                <a href="?estado=RESULTADO" class="btn btn-sm {% if estado_actual == 'RESULTADO' %}btn-success{% else %}btn-outline-success{% endif %} fw-semibold">Resultados</a>
+                <a href="{{ filtro_urls.todas }}" class="btn btn-sm {% if not estado_actual or estado_actual == 'TODAS' %}btn-dark{% else %}btn-outline-dark{% endif %} fw-semibold">Todas</a>
+                <a href="{{ filtro_urls.solicitado }}" class="btn btn-sm {% if estado_actual == 'SOLICITADO' %}btn-danger{% else %}btn-outline-danger{% endif %} fw-semibold">Pendientes</a>
+                <a href="{{ filtro_urls.tomado }}" class="btn btn-sm {% if estado_actual == 'TOMADO' %}btn-warning text-dark{% else %}btn-outline-warning text-dark{% endif %} fw-semibold">Tomadas</a>
+                <a href="{{ filtro_urls.enviado }}" class="btn btn-sm {% if estado_actual == 'ENVIADO' %}btn-info text-dark{% else %}btn-outline-info text-dark{% endif %} fw-semibold">Enviadas</a>
+                <a href="{{ filtro_urls.resultado }}" class="btn btn-sm {% if estado_actual == 'RESULTADO' %}btn-success{% else %}btn-outline-success{% endif %} fw-semibold">Resultados</a>
+                {% if mostrar_filtro_mis_solicitudes %}
+                    <a href="{{ filtro_urls.alcance_todas }}" class="btn btn-sm {% if alcance_actual != 'mis' %}btn-primary{% else %}btn-outline-primary{% endif %} fw-semibold">Tablero general</a>
+                    <a href="{{ filtro_urls.alcance_mis }}" class="btn btn-sm {% if alcance_actual == 'mis' %}btn-primary{% else %}btn-outline-primary{% endif %} fw-semibold">Mis solicitudes</a>
+                {% endif %}
             </div>
 
             <form method="GET" action="{% url 'dashboard' %}" class="d-flex flex-wrap" style="max-width: 360px; width: 100%; gap: 0.5rem;">
                 <input type="hidden" name="estado" value="{{ estado_actual|default_if_none:'' }}">
+                {% if alcance_actual == 'mis' %}
+                    <input type="hidden" name="alcance" value="mis">
+                {% endif %}
                 <input type="text" name="q" class="form-control form-control-sm border-secondary border-opacity-25" style="background: rgba(255,255,255,0.8); min-width: 0; flex: 1 1 180px;" placeholder="Buscar paciente, cama, examen o médico..." value="{{ request.GET.q|default_if_none:'' }}">
                 <button type="submit" class="btn btn-primary btn-sm fw-bold">Buscar</button>
                 {% if request.GET.q %}
-                    <a href="{% url 'dashboard' %}?estado={{ estado_actual|default_if_none:'' }}" class="btn btn-outline-secondary btn-sm border-0" title="Limpiar búsqueda">X</a>
+                    <a href="{{ filtro_urls.limpiar_busqueda }}" class="btn btn-outline-secondary btn-sm border-0" title="Limpiar búsqueda">X</a>
                 {% endif %}
             </form>
         </div>

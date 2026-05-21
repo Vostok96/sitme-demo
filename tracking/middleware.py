@@ -1,4 +1,9 @@
+import logging
+
 from django.conf import settings
+
+
+logger = logging.getLogger(__name__)
 
 
 class SecurityHeadersMiddleware:
@@ -11,7 +16,15 @@ class SecurityHeadersMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        response = self.get_response(request)
+        try:
+            response = self.get_response(request)
+        except Exception:
+            logger.exception(
+                "Error inesperado atendiendo %s %s",
+                request.method,
+                request.get_full_path(),
+            )
+            raise
 
         response.setdefault(
             "X-Frame-Options",

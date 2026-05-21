@@ -2,6 +2,7 @@ import os
 import secrets
 import unicodedata
 from datetime import timedelta
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -11,6 +12,7 @@ from django.contrib.auth.views import LoginView
 from django.db.models import Count, Prefetch
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
@@ -21,8 +23,11 @@ from .forms import (
     ResetPasswordUsuarioForm,
     SubirResultadoForm,
 )
-from .models import EventoOrden, IntentoLogin, OrdenExamen
+from .models import AuditoriaUsuario, EventoOrden, IntentoLogin, OrdenExamen
 from .permissions import (
+    GRUPO_EPIDEMIOLOGIA,
+    GRUPO_LABORATORIO,
+    GRUPO_MEDICO,
     obtener_contexto_roles,
     puede_administrar_usuarios,
     puede_crear_ordenes,
@@ -159,6 +164,49 @@ def obtener_usuarios_para_panel():
     return User.objects.prefetch_related("groups").order_by("username")
 
 
+def obtener_auditoria_usuarios_panel():
+    return (
+        AuditoriaUsuario.objects.select_related(
+            "usuario_objetivo",
+            "usuario_responsable",
+        ).order_by("-fecha_evento", "-id")[:15]
+    )
+
+
+def construir_url_dashboard(estado=None, query="", alcance=None):
+    params = {}
+
+    if estado and estado != "TODAS":
+        params["estado"] = estado
+
+    if query:
+        params["q"] = query
+
+    if alcance == "mis":
+        params["alcance"] = "mis"
+
+    base = reverse("dashboard")
+    querystring = urlencode(params)
+    return f"{base}?{querystring}" if querystring else base
+
+
+def obtener_rol_auditable_usuario(user):
+    nombre_grupo = user.groups.values_list("name", flat=True).first()
+    if nombre_grupo:
+        return nombre_grupo
+
+    if puede_gestionar_ordenes(user):
+        return GRUPO_LABORATORIO
+
+    if user.is_authenticated and not puede_crear_ordenes(user):
+        return GRUPO_EPIDEMIOLOGIA
+
+    if user.is_authenticated:
+        return GRUPO_MEDICO
+
+    return ""
+
+
 def normalizar_texto_busqueda(texto):
     texto = str(texto or "").strip().casefold()
     texto_preservando_enie = texto.replace("ñ", "__enie__")
@@ -215,10 +263,30 @@ def coincide_busqueda(texto_busqueda, query):
     return query_ascii in texto_ascii
 
 
+def registrar_auditoria_usuario(
+    *,
+    tipo_evento,
+    descripcion,
+    usuario_responsable,
+    usuario_objetivo,
+    rol_asignado="",
+):
+    return AuditoriaUsuario.objects.create(
+        tipo_evento=tipo_evento,
+        descripcion=descripcion,
+        username_afectado=usuario_objetivo.username,
+        nombre_visible_afectado=usuario_objetivo.first_name,
+        rol_asignado=rol_asignado,
+        usuario_objetivo=usuario_objetivo,
+        usuario_responsable=usuario_responsable,
+    )
+
+
 @login_required(login_url="login")
 def dashboard(request):
     query = (request.GET.get("q") or "").strip()
     estado_filtro = request.GET.get("estado")
+    alcance_filtro = "mis" if request.GET.get("alcance") == "mis" and puede_crear_ordenes(request.user) else "todas"
 
     eventos_queryset = EventoOrden.objects.select_related("usuario")
     ordenes = (
@@ -234,6 +302,9 @@ def dashboard(request):
         .order_by("-fecha_solicitud", "-id")
     )
 
+    if alcance_filtro == "mis":
+        ordenes = ordenes.filter(medico_solicitante=request.user)
+
     if estado_filtro and estado_filtro != "TODAS":
         ordenes = ordenes.filter(estado=estado_filtro)
 
@@ -247,6 +318,47 @@ def dashboard(request):
     context = {
         "ordenes": ordenes,
         "estado_actual": estado_filtro,
+        "alcance_actual": alcance_filtro,
+        "mostrar_filtro_mis_solicitudes": puede_crear_ordenes(request.user),
+        "filtro_urls": {
+            "todas": construir_url_dashboard(
+                query=query,
+                alcance=alcance_filtro if alcance_filtro == "mis" else None,
+            ),
+            "solicitado": construir_url_dashboard(
+                estado="SOLICITADO",
+                query=query,
+                alcance=alcance_filtro if alcance_filtro == "mis" else None,
+            ),
+            "tomado": construir_url_dashboard(
+                estado="TOMADO",
+                query=query,
+                alcance=alcance_filtro if alcance_filtro == "mis" else None,
+            ),
+            "enviado": construir_url_dashboard(
+                estado="ENVIADO",
+                query=query,
+                alcance=alcance_filtro if alcance_filtro == "mis" else None,
+            ),
+            "resultado": construir_url_dashboard(
+                estado="RESULTADO",
+                query=query,
+                alcance=alcance_filtro if alcance_filtro == "mis" else None,
+            ),
+            "alcance_todas": construir_url_dashboard(
+                estado=estado_filtro,
+                query=query,
+            ),
+            "alcance_mis": construir_url_dashboard(
+                estado=estado_filtro,
+                query=query,
+                alcance="mis",
+            ),
+            "limpiar_busqueda": construir_url_dashboard(
+                estado=estado_filtro,
+                alcance=alcance_filtro if alcance_filtro == "mis" else None,
+            ),
+        },
     }
     context.update(construir_contexto_base(request.user))
     return render(request, "tracking/dashboard.html", context)
@@ -550,7 +662,6 @@ def gestionar_usuarios(request):
 
         if accion == "crear_usuario":
             form = CrearUsuarioSITMEForm(request.POST)
-            reset_form = ResetPasswordUsuarioForm()
 
             if form.is_valid():
                 password_generada = (
@@ -560,6 +671,13 @@ def gestionar_usuarios(request):
                 usuario.set_password(password_generada)
                 usuario.save(update_fields=["password"])
                 usuario_afectado = usuario
+                registrar_auditoria_usuario(
+                    tipo_evento="CREACION_USUARIO",
+                    descripcion="Cuenta creada desde el panel de gestion de usuarios SITME.",
+                    usuario_responsable=request.user,
+                    usuario_objetivo=usuario,
+                    rol_asignado=form.cleaned_data["rol"],
+                )
                 messages.success(
                     request,
                     f"Usuario {usuario.username} creado correctamente.",
@@ -577,21 +695,26 @@ def gestionar_usuarios(request):
                 usuario.set_password(password_generada)
                 usuario.save(update_fields=["password"])
                 usuario_afectado = usuario
+                registrar_auditoria_usuario(
+                    tipo_evento="RESET_PASSWORD",
+                    descripcion="Se genero una nueva contrasena temporal desde el panel SITME.",
+                    usuario_responsable=request.user,
+                    usuario_objetivo=usuario,
+                    rol_asignado=obtener_rol_auditable_usuario(usuario),
+                )
                 messages.success(
                     request,
                     f"Se generó una nueva contraseña temporal para {usuario.username}.",
                 )
         else:
             form = CrearUsuarioSITMEForm()
-            reset_form = ResetPasswordUsuarioForm()
     else:
         form = CrearUsuarioSITMEForm()
-        reset_form = ResetPasswordUsuarioForm()
 
     context = {
         "form": form,
-        "reset_form": reset_form,
         "usuarios": obtener_usuarios_para_panel(),
+        "auditoria_usuarios": obtener_auditoria_usuarios_panel(),
         "password_generada": password_generada,
         "usuario_afectado": usuario_afectado,
     }

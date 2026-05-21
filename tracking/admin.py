@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import CatalogoExamen, EventoOrden, IntentoLogin, OrdenExamen
+from .models import (
+    AuditoriaUsuario,
+    CatalogoExamen,
+    EventoOrden,
+    IntentoLogin,
+    OrdenExamen,
+)
 
 
 @admin.register(CatalogoExamen)
@@ -50,3 +56,31 @@ class IntentoLoginAdmin(admin.ModelAdmin):
     list_filter = ('bloqueado_hasta', 'ultimo_intento')
     search_fields = ('username', 'ip_address', 'identificador')
     readonly_fields = ('identificador', 'username', 'ip_address', 'ultimo_intento', 'creado')
+
+
+@admin.register(AuditoriaUsuario)
+class AuditoriaUsuarioAdmin(admin.ModelAdmin):
+    list_display = (
+        'tipo_evento',
+        'username_afectado',
+        'rol_asignado',
+        'usuario_responsable',
+        'fecha_evento',
+    )
+    list_filter = ('tipo_evento', 'rol_asignado', 'fecha_evento')
+    search_fields = (
+        'username_afectado',
+        'nombre_visible_afectado',
+        'descripcion',
+        'usuario_responsable__username',
+    )
+    readonly_fields = (
+        'tipo_evento',
+        'descripcion',
+        'username_afectado',
+        'nombre_visible_afectado',
+        'rol_asignado',
+        'usuario_objetivo',
+        'usuario_responsable',
+        'fecha_evento',
+    )
